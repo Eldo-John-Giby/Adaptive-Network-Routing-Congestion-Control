@@ -23,8 +23,6 @@ env/
 .coverage
 htmlcov/
 
-# Streamlit
-.streamlit/
 
 # OS
 .DS_Store

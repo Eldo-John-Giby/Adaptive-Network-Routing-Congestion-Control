@@ -34,204 +34,265 @@ st.set_page_config(
 )
 
 # ─────────────────────────────────────────────
-# GLOBAL STYLES
+# HIGH-CONTRAST THEME STYLES (DARK/LIGHT ADAPTIVE)
 # ─────────────────────────────────────────────
 st.markdown("""
 <style>
-    /* ── Fonts & base ── */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
     html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
-    /* ── Hide Streamlit chrome ── */
     #MainMenu, footer, header { visibility: hidden; }
-    .block-container { padding-top: 2rem; padding-bottom: 3rem; max-width: 1280px; }
+    .block-container { padding-top: 1.8rem; padding-bottom: 3rem; max-width: 1280px; }
 
-    /* ── Page header ── */
+    /* Theme-adaptive CSS variables */
+    :root {
+        --bg-panel: rgba(15, 23, 42, 0.04);
+        --border-panel: rgba(148, 163, 184, 0.35);
+        --text-primary: #0F172A;
+        --text-secondary: #334155;
+        --text-muted: #64748B;
+        --accent-blue: #2563EB;
+        --accent-blue-hover: #1D4ED8;
+        --card-bg: #FFFFFF;
+        --banner-info-bg: #EFF6FF;
+        --banner-info-border: #3B82F6;
+        --banner-info-text: #1E3A8A;
+        --banner-warn-bg: #FEF3C7;
+        --banner-warn-border: #F59E0B;
+        --banner-warn-text: #78350F;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-panel: rgba(30, 41, 59, 0.7);
+            --border-panel: rgba(148, 163, 184, 0.3);
+            --text-primary: #F8FAFC;
+            --text-secondary: #E2E8F0;
+            --text-muted: #94A3B8;
+            --accent-blue: #3B82F6;
+            --accent-blue-hover: #60A5FA;
+            --card-bg: #1E293B;
+            --banner-info-bg: rgba(30, 58, 138, 0.4);
+            --banner-info-border: #60A5FA;
+            --banner-info-text: #DBEAFE;
+            --banner-warn-bg: rgba(120, 53, 15, 0.4);
+            --banner-warn-border: #FBBF24;
+            --banner-warn-text: #FEF3C7;
+        }
+    }
+
+    /* Page header */
     .page-header {
-        border-left: 4px solid #2563EB;
-        padding: 0.6rem 0 0.6rem 1.2rem;
-        margin-bottom: 0.25rem;
+        border-left: 5px solid var(--accent-blue);
+        padding: 0.5rem 0 0.5rem 1.2rem;
+        margin-bottom: 0.5rem;
     }
     .page-header h1 {
-        font-size: 1.65rem;
+        font-size: 1.75rem;
         font-weight: 700;
-        color: #0F172A;
+        color: var(--text-primary);
         margin: 0;
-        letter-spacing: -0.3px;
+        letter-spacing: -0.02em;
     }
     .page-header p {
-        font-size: 0.85rem;
-        color: #64748B;
-        margin: 0.2rem 0 0 0;
+        font-size: 0.88rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        margin: 0.3rem 0 0 0;
     }
 
-    /* ── Section label ── */
+    /* Section label */
     .section-label {
-        font-size: 0.7rem;
-        font-weight: 600;
+        font-size: 0.72rem;
+        font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #94A3B8;
-        margin-bottom: 0.4rem;
+        color: var(--accent-blue);
+        margin-bottom: 0.5rem;
     }
 
-    /* ── Panel card ── */
+    /* Panel container */
     .panel {
-        background: #F8FAFC;
-        border: 1px solid #E2E8F0;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-panel);
         border-radius: 8px;
         padding: 1.2rem 1.4rem;
-        margin-bottom: 1rem;
+        margin-bottom: 1.1rem;
     }
     .panel h3 {
-        font-size: 0.95rem;
+        font-size: 1rem;
         font-weight: 600;
-        color: #1E293B;
-        margin: 0 0 0.8rem 0;
+        color: var(--text-primary);
+        margin: 0 0 0.9rem 0;
     }
 
-    /* ── Result row badges ── */
+    /* High-contrast result rows */
     .result-row {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        padding: 0.55rem 0.9rem;
+        gap: 0.8rem;
+        padding: 0.65rem 1rem;
         border-radius: 6px;
-        background: #F1F5F9;
-        border: 1px solid #E2E8F0;
+        background: var(--card-bg);
+        border: 1px solid var(--border-panel);
         margin-bottom: 0.5rem;
-        font-size: 0.82rem;
-        color: #334155;
+        font-size: 0.86rem;
+        color: var(--text-primary);
         font-family: 'JetBrains Mono', monospace;
     }
-    .badge-ok {
-        background: #DCFCE7;
-        color: #166534;
-        border: 1px solid #BBF7D0;
-        border-radius: 4px;
-        padding: 1px 8px;
-        font-size: 0.72rem;
+    .result-row code {
+        color: #38BDF8;
         font-weight: 600;
-        white-space: nowrap;
-    }
-    .badge-fail {
-        background: #FEE2E2;
-        color: #991B1B;
-        border: 1px solid #FECACA;
-        border-radius: 4px;
-        padding: 1px 8px;
-        font-size: 0.72rem;
-        font-weight: 600;
-        white-space: nowrap;
-    }
-    .badge-warn {
-        background: #FEF9C3;
-        color: #854D0E;
-        border: 1px solid #FDE68A;
-        border-radius: 4px;
-        padding: 1px 8px;
-        font-size: 0.72rem;
-        font-weight: 600;
-        white-space: nowrap;
     }
 
-    /* ── KPI metric cards ── */
+    /* High-contrast status badges */
+    .badge-ok {
+        background: #14532D;
+        color: #BBF7D0;
+        border: 1px solid #22C55E;
+        border-radius: 4px;
+        padding: 3px 9px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        white-space: nowrap;
+        letter-spacing: 0.04em;
+    }
+    .badge-fail {
+        background: #7F1D1D;
+        color: #FECACA;
+        border: 1px solid #EF4444;
+        border-radius: 4px;
+        padding: 3px 9px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        white-space: nowrap;
+        letter-spacing: 0.04em;
+    }
+    .badge-warn {
+        background: #78350F;
+        color: #FEF08A;
+        border: 1px solid #F59E0B;
+        border-radius: 4px;
+        padding: 3px 9px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        white-space: nowrap;
+        letter-spacing: 0.04em;
+    }
+
+    /* KPI metric cards */
     .kpi-grid { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
     .kpi-card {
         flex: 1;
-        background: #FFFFFF;
-        border: 1px solid #E2E8F0;
+        background: var(--card-bg);
+        border: 1px solid var(--border-panel);
         border-radius: 8px;
         padding: 1rem 1.2rem;
     }
     .kpi-label {
-        font-size: 0.72rem;
-        font-weight: 600;
+        font-size: 0.75rem;
+        font-weight: 700;
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: #94A3B8;
-        margin-bottom: 0.3rem;
+        color: var(--text-muted);
+        margin-bottom: 0.4rem;
     }
     .kpi-value {
-        font-size: 1.6rem;
+        font-size: 1.75rem;
         font-weight: 700;
-        color: #0F172A;
-        line-height: 1;
+        color: var(--text-primary);
+        line-height: 1.1;
     }
-    .kpi-sub { font-size: 0.75rem; color: #64748B; margin-top: 0.2rem; }
+    .kpi-sub { font-size: 0.8rem; font-weight: 500; color: var(--text-muted); margin-top: 0.3rem; }
 
-    /* ── Divider ── */
-    .divider { border: none; border-top: 1px solid #E2E8F0; margin: 1.2rem 0; }
+    .divider { border: none; border-top: 1px solid var(--border-panel); margin: 1.3rem 0; }
 
-    /* ── Tab styling ── */
+    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 0;
-        border-bottom: 2px solid #E2E8F0;
+        gap: 0.5rem;
+        border-bottom: 2px solid var(--border-panel);
     }
     .stTabs [data-baseweb="tab"] {
-        font-size: 0.82rem;
-        font-weight: 500;
-        color: #64748B;
-        padding: 0.6rem 1.2rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        padding: 0.65rem 1.3rem;
         border-radius: 0;
         background: transparent;
     }
     .stTabs [aria-selected="true"] {
-        color: #2563EB !important;
-        border-bottom: 2px solid #2563EB;
+        color: var(--accent-blue) !important;
+        border-bottom: 3px solid var(--accent-blue);
         background: transparent;
     }
 
-    /* ── Topology text block ── */
+    /* Terminal-style high-contrast topology */
     .topo-block {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 0.8rem;
-        background: #0F172A;
-        color: #94A3B8;
-        border-radius: 6px;
-        padding: 1rem 1.2rem;
-        line-height: 1.7;
+        font-size: 0.86rem;
+        font-weight: 500;
+        background: #0B0F19;
+        color: #F8FAFC;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 1.1rem 1.3rem;
+        line-height: 1.8;
         white-space: pre;
     }
-    .topo-node { color: #60A5FA; font-weight: 600; }
-    .topo-link { color: #34D399; }
+    .topo-node { color: #60A5FA; font-weight: 700; }
+    .topo-link { color: #34D399; font-weight: 600; }
 
-    /* ── Info banner ── */
+    /* High-contrast notification banners */
     .info-banner {
-        background: #EFF6FF;
-        border-left: 3px solid #2563EB;
-        border-radius: 0 6px 6px 0;
-        padding: 0.65rem 1rem;
-        font-size: 0.82rem;
-        color: #1E40AF;
+        background: var(--banner-info-bg);
+        border: 1px solid var(--banner-info-border);
+        border-left: 4px solid var(--banner-info-border);
+        border-radius: 6px;
+        padding: 0.8rem 1.1rem;
+        font-size: 0.88rem;
+        font-weight: 500;
+        color: var(--banner-info-text);
         margin-bottom: 1rem;
+        line-height: 1.5;
     }
     .warn-banner {
-        background: #FFFBEB;
-        border-left: 3px solid #D97706;
-        border-radius: 0 6px 6px 0;
-        padding: 0.65rem 1rem;
-        font-size: 0.82rem;
-        color: #92400E;
+        background: var(--banner-warn-bg);
+        border: 1px solid var(--banner-warn-border);
+        border-left: 4px solid var(--banner-warn-border);
+        border-radius: 6px;
+        padding: 0.8rem 1.1rem;
+        font-size: 0.88rem;
+        font-weight: 500;
+        color: var(--banner-warn-text);
         margin-bottom: 1rem;
+        line-height: 1.5;
     }
 
-    /* ── Button override ── */
+    /* High-contrast buttons */
     .stButton > button {
-        background: #2563EB;
-        color: #FFFFFF;
-        border: none;
+        background: #2563EB !important;
+        color: #FFFFFF !important;
+        border: 1px solid #1D4ED8 !important;
         border-radius: 6px;
-        font-weight: 500;
-        font-size: 0.85rem;
-        padding: 0.5rem 1.2rem;
-        transition: background 0.15s;
+        font-weight: 600;
+        font-size: 0.88rem;
+        padding: 0.55rem 1.3rem;
+        transition: all 0.15s ease-in-out;
     }
-    .stButton > button:hover { background: #1D4ED8; }
-    .stButton > button:active { background: #1E40AF; }
+    .stButton > button:hover {
+        background: #1D4ED8 !important;
+        border-color: #1E40AF !important;
+        color: #FFFFFF !important;
+    }
+
+    /* Expanders header contrast */
+    .streamlit-expanderHeader {
+        font-weight: 600;
+        color: var(--text-primary) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -279,7 +340,7 @@ tabs = st.tabs([
 # TAB 1 — OSI STACK INSPECTOR
 # ═══════════════════════════════════════════════════════════════
 with tabs[0]:
-    st.markdown("<p class='section-label'>Assessment 2 & 5 — Protocol Stack Demonstration</p>", unsafe_allow_html=True)
+    st.markdown("<p class='section-label'>Assessment 2 &amp; 5 — Protocol Stack Demonstration</p>", unsafe_allow_html=True)
     st.markdown("""
     <div class='info-banner'>
         Configure a payload below and run the encapsulation engine to inspect every header added as data travels from
@@ -308,7 +369,7 @@ with tabs[0]:
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col2:
-        st.markdown("<h3 style='font-size:0.95rem;font-weight:600;color:#1E293B;margin-bottom:0.8rem;'>Layer-by-Layer Header Inspection</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='font-size:1rem;font-weight:600;margin-bottom:0.8rem;'>Layer-by-Layer Header Inspection</h3>", unsafe_allow_html=True)
         if send_btn:
             stack = OSIStack()
             t_type = TransportType.TCP if "TCP" in proto_choice else TransportType.UDP
@@ -317,12 +378,12 @@ with tabs[0]:
 
             if dec_trace.decapsulation_success:
                 st.markdown(
-                    f"<div class='info-banner'>Packet encapsulated and delivered. Trace ID: <code>{enc_trace.trace_id}</code></div>",
+                    f"<div class='info-banner'>Packet encapsulated and delivered. Trace ID: <strong>{enc_trace.trace_id}</strong></div>",
                     unsafe_allow_html=True,
                 )
             else:
                 st.markdown(
-                    f"<div class='warn-banner'>Decapsulation failed — CRC mismatch detected at receiver. Trace ID: <code>{enc_trace.trace_id}</code></div>",
+                    f"<div class='warn-banner'>Decapsulation failed — CRC mismatch detected at receiver. Trace ID: <strong>{enc_trace.trace_id}</strong></div>",
                     unsafe_allow_html=True,
                 )
 
@@ -352,8 +413,8 @@ with tabs[0]:
                 st.json(enc_trace.l1_phys)
         else:
             st.markdown(
-                "<div style='color:#94A3B8;font-size:0.85rem;padding-top:2rem;text-align:center;'>"
-                "Configure the transmission settings and click <strong>Run Encapsulation</strong> to inspect the stack."
+                "<div style='color:var(--text-muted);font-size:0.9rem;padding-top:2rem;text-align:center;font-weight:500;'>"
+                "Configure transmission parameters and click <strong>Run Encapsulation &amp; Inspect Stack</strong> to begin."
                 "</div>",
                 unsafe_allow_html=True,
             )
@@ -362,16 +423,16 @@ with tabs[0]:
 # TAB 2 — NETWORK TOPOLOGY & ML ROUTING
 # ═══════════════════════════════════════════════════════════════
 with tabs[1]:
-    st.markdown("<p class='section-label'>Assessment 6 & 7 — Routing Protocol & Congestion Control</p>", unsafe_allow_html=True)
+    st.markdown("<p class='section-label'>Assessment 6 &amp; 7 — Routing Protocol &amp; Congestion Control</p>", unsafe_allow_html=True)
 
     top_col1, top_col2 = st.columns([1, 1], gap="large")
 
     with top_col1:
         st.markdown("<div class='panel'><h3>Network Topology  —  Figure 5</h3>", unsafe_allow_html=True)
         st.markdown("""
-        <div class='topo-block'>  [S] ──(8ms)──► [R1] ──(5ms)──► [R2] ──(4ms)──► [R4] ──(7ms)──► [D]
+        <div class='topo-block'>  <span class='topo-node'>[S]</span> ──(8ms)──► <span class='topo-node'>[R1]</span> ──(5ms)──► <span class='topo-node'>[R2]</span> ──(4ms)──► <span class='topo-node'>[R4]</span> ──(7ms)──► <span class='topo-node'>[D]</span>
    │              │                              ▲       ▲
-   └──(14ms)──►  [R3] ────────────(3ms)─────────┘       │
+   └──(14ms)──►  <span class='topo-node'>[R3]</span> ────────────(3ms)─────────┘       │
                   └──────────────────────────────────────┘</div>
         """, unsafe_allow_html=True)
 
@@ -454,8 +515,8 @@ with tabs[1]:
                 st.markdown(
                     f"<div class='result-row'>{badge}"
                     f"&nbsp; <code>{r.trace_id}</code>"
-                    f"&nbsp;·&nbsp; {path_str}"
-                    f"&nbsp;·&nbsp; {r.total_latency_ms} ms"
+                    f"&nbsp;·&nbsp; <strong>{path_str}</strong>"
+                    f"&nbsp;·&nbsp; <strong>{r.total_latency_ms} ms</strong>"
                     f"&nbsp;·&nbsp; {r.retransmissions} retx</div>",
                     unsafe_allow_html=True,
                 )
@@ -465,7 +526,7 @@ with tabs[1]:
 # TAB 3 — PERFORMANCE TELEMETRY
 # ═══════════════════════════════════════════════════════════════
 with tabs[2]:
-    st.markdown("<p class='section-label'>Live Performance Metrics & Telemetry History</p>", unsafe_allow_html=True)
+    st.markdown("<p class='section-label'>Live Performance Metrics &amp; Telemetry History</p>", unsafe_allow_html=True)
 
     if st.session_state.history:
         hist_df = pd.DataFrame(st.session_state.history)
@@ -501,42 +562,45 @@ with tabs[2]:
         </div>
         """, unsafe_allow_html=True)
 
-        # ── Charts ──
+        # ── High-Contrast Matplotlib Visualizations ──
+        chart_bg = "#0F172A"
+        chart_fg = "#F8FAFC"
+        grid_color = "#334155"
+
         mpl.rcParams.update({
             "font.family": "sans-serif",
             "axes.spines.top": False,
             "axes.spines.right": False,
             "axes.grid": True,
-            "grid.color": "#E2E8F0",
+            "grid.color": grid_color,
             "grid.linestyle": "--",
             "grid.linewidth": 0.8,
-            "axes.labelcolor": "#475569",
-            "axes.titlecolor": "#1E293B",
+            "axes.labelcolor": "#CBD5E1",
+            "axes.titlecolor": "#F8FAFC",
             "xtick.color": "#94A3B8",
             "ytick.color": "#94A3B8",
-            "figure.facecolor": "#FFFFFF",
-            "axes.facecolor": "#FFFFFF",
+            "figure.facecolor": chart_bg,
+            "axes.facecolor": chart_bg,
         })
 
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 4))
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 4.2))
         fig.subplots_adjust(wspace=0.35)
 
         ax1.plot(
             hist_df["seq"], hist_df["latency_ms"],
-            marker="o", markersize=5,
-            color="#2563EB", linewidth=1.8, markerfacecolor="#FFFFFF",
-            markeredgewidth=1.8, markeredgecolor="#2563EB",
+            marker="o", markersize=6,
+            color="#38BDF8", linewidth=2.2, markerfacecolor="#0284C7",
+            markeredgewidth=1.8, markeredgecolor="#E0F2FE",
         )
-        ax1.fill_between(hist_df["seq"], hist_df["latency_ms"], alpha=0.08, color="#2563EB")
-        ax1.set_title("End-to-End Latency", fontsize=11, fontweight="600", pad=10)
-        ax1.set_xlabel("Packet Sequence", fontsize=9)
-        ax1.set_ylabel("Latency (ms)", fontsize=9)
+        ax1.fill_between(hist_df["seq"], hist_df["latency_ms"], alpha=0.18, color="#38BDF8")
+        ax1.set_title("End-to-End Latency (ms)", fontsize=11, fontweight="700", pad=12, color=chart_fg)
+        ax1.set_xlabel("Packet Sequence", fontsize=9.5, fontweight="600")
+        ax1.set_ylabel("Latency (ms)", fontsize=9.5, fontweight="600")
 
-        bar_colors = ["#EF4444" if not d else "#2563EB" for d in hist_df["delivered"]]
-        ax2.bar(hist_df["seq"], hist_df["retransmissions"], color="#F59E0B", width=0.6, zorder=3)
-        ax2.set_title("TCP Retransmissions per Packet", fontsize=11, fontweight="600", pad=10)
-        ax2.set_xlabel("Packet Sequence", fontsize=9)
-        ax2.set_ylabel("Retransmission Count", fontsize=9)
+        ax2.bar(hist_df["seq"], hist_df["retransmissions"], color="#F59E0B", width=0.55, edgecolor="#FDE68A", linewidth=1, zorder=3)
+        ax2.set_title("TCP Retransmissions per Packet", fontsize=11, fontweight="700", pad=12, color=chart_fg)
+        ax2.set_xlabel("Packet Sequence", fontsize=9.5, fontweight="600")
+        ax2.set_ylabel("Retransmission Count", fontsize=9.5, fontweight="600")
         ax2.yaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
 
         st.pyplot(fig)
@@ -560,7 +624,7 @@ with tabs[2]:
     else:
         st.markdown(
             "<div class='info-banner'>No telemetry recorded yet. Run a simulation in the "
-            "<strong>Network Topology & ML Routing</strong> tab to populate this view.</div>",
+            "<strong>Network Topology &amp; ML Routing</strong> tab to populate this view.</div>",
             unsafe_allow_html=True,
         )
 
@@ -624,15 +688,15 @@ with tabs[3]:
                 <div class='kpi-grid' style='margin-top:1rem;'>
                     <div class='kpi-card'>
                         <div class='kpi-label'>Protocol</div>
-                        <div class='kpi-value' style='font-size:1.2rem;'>{proto_label}</div>
+                        <div class='kpi-value' style='font-size:1.3rem;color:#38BDF8;'>{proto_label}</div>
                     </div>
                     <div class='kpi-card'>
                         <div class='kpi-label'>Round-Trip Time</div>
-                        <div class='kpi-value' style='font-size:1.2rem;'>{rtt} ms</div>
+                        <div class='kpi-value' style='font-size:1.3rem;'>{rtt} ms</div>
                     </div>
                     <div class='kpi-card'>
                         <div class='kpi-label'>Status</div>
-                        <div class='kpi-value' style='font-size:1.2rem;color:#166534;'>OK</div>
+                        <div class='kpi-value' style='font-size:1.3rem;color:#22C55E;'>OK</div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -643,8 +707,8 @@ with tabs[3]:
                 )
         else:
             st.markdown(
-                "<div style='color:#94A3B8;font-size:0.85rem;padding:1.5rem 0;text-align:center;'>"
-                "Configure the client and click <strong>Transmit</strong> to test the socket endpoint."
+                "<div style='color:var(--text-muted);font-size:0.9rem;padding:1.5rem 0;text-align:center;font-weight:500;'>"
+                "Configure the client and click <strong>Transmit over Local Socket</strong> to test the socket endpoint."
                 "</div>",
                 unsafe_allow_html=True,
             )
@@ -655,7 +719,7 @@ with tabs[3]:
 # ─────────────────────────────────────────────
 st.markdown("<hr class='divider'>", unsafe_allow_html=True)
 st.markdown("""
-<div style='text-align:center;font-size:0.75rem;color:#94A3B8;padding-bottom:1rem;'>
+<div style='text-align:center;font-size:0.78rem;font-weight:500;color:var(--text-muted);padding-bottom:1rem;'>
     Adaptive Network Routing &amp; Congestion Control &nbsp;|&nbsp;
     Computer Networks Project &nbsp;|&nbsp; VIT University &nbsp;|&nbsp; 2026
 </div>
