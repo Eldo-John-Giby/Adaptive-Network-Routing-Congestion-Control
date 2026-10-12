@@ -1,0 +1,117 @@
+ADAPTIVE NETWORK ROUTING & CONGESTION CONTROL 
+An end-to-end network simulation for adaptive routing and congestion control enhanced by Machine Learning. 
+SHREEJITH J (24BCE0625)
+POOJA IYKKARATH SANTHOSH (24BAI0269) 
+HEMAL KAMINENI (24BCE0649) 
+ELDO JOHN GIBY (24BCE0387) 
+ANFY SONY (24BCE2799)
+Abstract
+This project develops a Python-first network simulation and analysis system that demonstrates the complete journey of data across the seven OSI layers while studying routing and congestion under changing network conditions. The system generates application data, performs encoding and session management, transports data using TCP or UDP, creates IP packets, adds MAC addressing and CRC-based error detection, and models bandwidth and transmission delay. A software network of configurable routers and links is used to simulate queueing, packet loss, delay and link failures. A machine-learning module learns from these network states to predict congestion and estimate route performance, allowing the system to choose better paths dynamically. The project combines Computer Networks laboratory concepts with machine-learning-based decision making and presents the results through a visual packet journey and performance dashboard.
+Core ideaGenerate → encapsulate → route → stress the network → predict → adapt → deliver → measure.1. Project Concept
+The project asks one practical question: how should a network adapt when its links, queues and traffic conditions change? A single packet is followed from the application layer to transmission and back to the receiver.
+What the system demonstrates
+End-to-end communication across all seven OSI layers.
+Python TCP/UDP communication with session and transport behavior.
+Adaptive routing using live network metrics rather than a fixed path.
+Congestion creation, measurement and recovery inside the simulator.
+ML-assisted prediction of congestion and route performance.
+CRC/error detection, packet loss and transport-level recovery.
+Core outputs
+Metric
+Observed output
+Throughput
+Delivered bits per second
+Delay / RTT
+End-to-end and per-link delay
+Packet loss
+Dropped / corrupted packets
+Queue state
+Occupancy at each router
+Route state
+Current path and route changes
+ML state
+Predicted congestion / route quality
+Scope
+Python is the main implementation. Wireshark and Cisco Packet Tracer remain optional validation / comparison tools, not dependencies of the core system.
+2. System Architecture
+The project separates the seven-layer communication stack from the network-state monitor and the ML control loop. This lets the same packet be inspected while the network adapts.
+Figure 1. End-to-end architecture and ML feedback path.
+Core modules
+Module
+Purpose
+Endpoints
+Generate messages/files and use TCP or UDP.
+OSI packet engine
+Encapsulate, decapsulate and expose headers / control fields.
+Router simulator
+Forward packets, maintain routes and model links / queues.
+Performance monitor
+Collect throughput, delay, loss, RTT and queue metrics.
+ML engine
+Predict congestion / route quality and influence route selection.
+3. Seven-Layer OSI Demonstration
+Every layer performs a concrete operation in the same communication flow. The project is therefore OSI-complete without becoming a collection of unrelated demonstrations.
+Figure 2. Seven OSI layers mapped to project operations.
+Layer
+Implementation
+L7 Application
+Message / file / request creation
+L6 Presentation
+UTF-8 / JSON encoding; optional compression
+L5 Session
+Session setup, state and termination
+L4 Transport
+TCP/UDP, sequence, ACK, timeout, retransmission
+L3 Network
+IP addressing and adaptive routing
+L2 Data Link
+MAC frames and CRC / checksum
+L1 Physical
+Bandwidth, transmission time and propagation delay
+4. Adaptive Routing + Machine Learning
+ML is used as a decision component, not as a replacement for networking. The simulator generates its own training data from controlled network conditions.
+Figure 3. Network-state features flow into an ML model and back into routing.
+ML setup
+Random Forest classifier: LOW / MEDIUM / HIGH congestion.
+Optional regression model: predicted route delay or packet loss.
+Training data: simulator-generated combinations of bandwidth, packet rate, queue length, RTT, loss and active connections.
+Example decision
+Route
+Predicted delay
+Decision
+S → R1 → R2 → D
+76 ms
+Avoid if congestion is high
+S → R1 → R3 → D
+28 ms
+Preferred
+S → R1 → R4 → D
+43 ms
+Backup
+5. Routing, Congestion and Error Recovery
+Stress one part of the network, observe the metrics, let the ML layer identify the problem, and adapt the route. The same run can include a deliberate frame error.
+Figure 4. Example multi-route topology.
+Figure 5. Traffic increase → queue growth → ML prediction → rerouting.
+6. Lab Alignment and Review Flow
+The project is broader than a single lab experiment, but each major laboratory topic has a direct place inside the same end-to-end system.
+Figure 6. Assessment coverage through one integrated project.
+7. Technology Stack and Expected Output
+The implementation stays Python-first. External tools are optional and used only when they strengthen validation or presentation.
+Tool
+Role
+Python + socket
+Core simulator and TCP/UDP endpoints
+NumPy / Pandas
+Metrics and ML dataset preparation
+scikit-learn
+Random Forest / regression models
+Matplotlib / Streamlit
+Graphs and optional live dashboard
+Scapy (optional)
+Packet construction / inspection
+Wireshark (optional)
+Independent packet verification
+Packet Tracer (optional)
+Topology / routing comparison
+One-line project description
+A Python-based network simulator that demonstrates all seven OSI layers and uses machine learning to predict congestion and make adaptive routing decisions under changing network conditions.
