@@ -377,10 +377,11 @@ tabs = st.tabs([
 # ═══════════════════════════════════════════════════════════════
 # HELPER: INTERACTIVE NETWORK GRAPH (PLOTLY)
 # ═══════════════════════════════════════════════════════════════
-def build_topology_figure(topology: NetworkTopology, active_path=None, stress_r2=False):
+def build_topology_figure(topology: NetworkTopology, active_path=None, stress_r2=False, packet_pos=None):
     """
     Renders an interactive high-contrast network topology visual with Plotly.
     Figure 5 node layout with live telemetry overlays and dynamic path highlighting.
+    packet_pos: optional (x, y, label, color) representing a live moving packet across links.
     """
     # Coordinates for Figure 5 topology
     pos = {
@@ -509,6 +510,27 @@ def build_topology_figure(topology: NetworkTopology, active_path=None, stress_r2
         showlegend=False,
     ))
 
+    # Optional Live Moving Packet Marker Overlay
+    if packet_pos:
+        px_val, py_val, p_lbl, p_color = packet_pos
+        fig.add_trace(go.Scatter(
+            x=[px_val],
+            y=[py_val],
+            mode="markers+text",
+            text=[f"  {p_lbl}"],
+            textposition="top right",
+            textfont=dict(family="JetBrains Mono", size=11, color=p_color),
+            marker=dict(
+                size=22,
+                color=p_color,
+                symbol="diamond",
+                line=dict(color="#FFFFFF", width=2.0),
+            ),
+            hoverinfo="text",
+            hovertext=f"Live Packet: {p_lbl}",
+            showlegend=False,
+        ))
+
     # Layout styling
     fig.update_layout(
         paper_bgcolor="rgba(11, 15, 25, 0.95)",
@@ -516,7 +538,7 @@ def build_topology_figure(topology: NetworkTopology, active_path=None, stress_r2
         margin=dict(l=20, r=20, t=20, b=20),
         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-2.5, 3.1]),
         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-1.4, 1.4]),
-        height=330,
+        height=340,
     )
     return fig
 
@@ -557,13 +579,16 @@ with tabs[0]:
         best_path_eval, best_route_obj = st.session_state.router.select_best_route("S", "D")
         selected_display_path = best_path_eval if "ML" in routing_mode else ["S", "R1", "R2", "R4", "D"]
 
-        # Render Topology Graph
+        # Topology Chart Placeholder for Live Animation
+        topo_placeholder = st.empty()
+
+        # Initial Render of Topology Graph
         topo_fig = build_topology_figure(
             st.session_state.topology,
             active_path=selected_display_path,
             stress_r2=stress_r2
         )
-        st.plotly_chart(topo_fig, use_container_width=True)
+        topo_placeholder.plotly_chart(topo_fig, use_container_width=True)
 
         # Candidate Paths Summary Table
         c_p1, c_p2, c_p3 = st.columns(3)
@@ -602,12 +627,62 @@ with tabs[0]:
 
         send_burst_btn = st.button("Transmit Packet Burst", use_container_width=True)
 
+        # Execution Status & Live Stream Container
+        anim_status_placeholder = st.empty()
+        log_stream_placeholder = st.empty()
+
         if send_burst_btn:
             recent_burst = []
-            for i in range(sim_packets):
+            node_positions = {
+                "S":  (-2.0,  0.0),
+                "R1": (-0.8,  0.8),
+                "R3": (-0.8, -0.8),
+                "R2": ( 0.6,  0.8),
+                "R4": ( 1.4,  0.0),
+                "D":  ( 2.6,  0.0),
+            }
+
+            for pkt_idx in range(sim_packets):
                 path_to_take = selected_display_path
+
+                # Live Animated Packet Traversal along path hops
+                for h in range(len(path_to_take) - 1):
+                    src_node = path_to_take[h]
+                    dst_node = path_to_take[h + 1]
+                    x_start, y_start = node_positions[src_node]
+                    x_end, y_end = node_positions[dst_node]
+
+                    # Interpolate movement along link
+                    steps = 4
+                    for step_i in range(steps + 1):
+                        alpha = step_i / steps
+                        curr_x = x_start + alpha * (x_end - x_start)
+                        curr_y = y_start + alpha * (y_end - y_start)
+
+                        # Determine packet color: amber if approaching stressed R2, cyan otherwise
+                        is_near_congested = stress_r2 and (src_node == "R2" or dst_node == "R2")
+                        p_color = "#EF4444" if is_near_congested else "#38BDF8"
+                        p_label = f"PKT #{pkt_idx + 1} ({src_node}→{dst_node})"
+
+                        anim_fig = build_topology_figure(
+                            st.session_state.topology,
+                            active_path=selected_display_path,
+                            stress_r2=stress_r2,
+                            packet_pos=(curr_x, curr_y, p_label, p_color)
+                        )
+                        topo_placeholder.plotly_chart(anim_fig, use_container_width=True)
+
+                        anim_status_placeholder.markdown(f"""
+                        <div class='callout-info' style='margin:0.5rem 0;'>
+                            <span class='badge badge-info'>IN-FLIGHT</span>
+                            Transmitting <strong>Packet #{pkt_idx + 1}/{sim_packets}</strong> across link <code>{src_node} → {dst_node}</code>...
+                        </div>
+                        """, unsafe_allow_html=True)
+                        time.sleep(0.04)
+
+                # Execute transmission simulation
                 res = st.session_state.simulator.transmit_message(
-                    message=f"CRITICAL_PAYLOAD_BURST_#{i+1}",
+                    message=f"CRITICAL_PAYLOAD_BURST_#{pkt_idx+1}",
                     path=path_to_take,
                     transport_type=TransportType.TCP
                 )
@@ -624,12 +699,27 @@ with tabs[0]:
                     "r2_queue_pct": st.session_state.topology.nodes["R2"].queue_occupancy_ratio * 100
                 })
 
-            st.markdown("<p style='font-size:0.75rem;font-weight:700;color:#94A3B8;text-transform:uppercase;margin:0.8rem 0 0.4rem 0;'>Burst Execution Log</p>", unsafe_allow_html=True)
+            # Return topology to static state at completion
+            final_fig = build_topology_figure(
+                st.session_state.topology,
+                active_path=selected_display_path,
+                stress_r2=stress_r2
+            )
+            topo_placeholder.plotly_chart(final_fig, use_container_width=True)
+
+            anim_status_placeholder.markdown("""
+            <div class='callout-info' style='background:rgba(6, 78, 59, 0.4);border-color:#10B981;color:#A7F3D0;margin:0.5rem 0;'>
+                <strong>BURST TRANSMISSION COMPLETE:</strong> All packets traversed the active routing fabric.
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Render log rows
+            log_html = "<p style='font-size:0.75rem;font-weight:700;color:#94A3B8;text-transform:uppercase;margin:0.8rem 0 0.4rem 0;'>Burst Execution Log</p>"
             for r in recent_burst:
                 badge = "<span class='badge badge-success'>DELIVERED</span>" if r.delivered else "<span class='badge badge-danger'>DROPPED</span>"
                 path_fmt = " → ".join(r.selected_path)
                 retx_disp = f"<span style='color:#F59E0B;'>{r.retransmissions} Retransmits</span>" if r.retransmissions > 0 else "<span style='color:#10B981;'>0 Retx</span>"
-                st.markdown(f"""
+                log_html += f"""
                 <div class='log-row'>
                     {badge}
                     <code style='color:#38BDF8;'>{r.trace_id}</code>
@@ -637,7 +727,8 @@ with tabs[0]:
                     <span style='color:#F8FAFC;font-weight:700;'>{r.total_latency_ms} ms</span>
                     {retx_disp}
                 </div>
-                """, unsafe_allow_html=True)
+                """
+            log_stream_placeholder.markdown(log_html, unsafe_allow_html=True)
         else:
             active_route_str = " → ".join(selected_display_path)
             st.markdown(f"""
