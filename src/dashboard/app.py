@@ -885,6 +885,10 @@ with tabs[2]:
                 "Retransmissions per Transmission Event",
                 "Delivery Status Distribution"
             ),
+            specs=[
+                [{"type": "xy"}, {"type": "xy"}],
+                [{"type": "xy"}, {"type": "domain"}]
+            ],
             vertical_spacing=0.18,
             horizontal_spacing=0.12,
         )
