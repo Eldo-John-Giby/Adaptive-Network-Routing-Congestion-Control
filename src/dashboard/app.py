@@ -790,10 +790,37 @@ with tabs[1]:
         )
         inject_bitflip = st.checkbox("Inject CRC-32 Bit-Flip Corruption (Layer 2 Framing Error)", value=False)
         encapsulate_btn = st.button("Execute 7-Layer Encapsulation", use_container_width=True)
+        osi_stepper_placeholder = st.empty()
 
         if encapsulate_btn:
             stack = OSIStack()
             t_type = TransportType.TCP if "TCP" in l4_proto else TransportType.UDP
+
+            # Live Step-by-Step Encapsulation Animation
+            osi_steps = [
+                ("L7 Application", "Creating payload and message ID...", 15),
+                ("L6 Presentation", "Applying JSON serialization & zlib compression...", 30),
+                ("L5 Session", "Issuing authentication handshake token & state...", 45),
+                ("L4 Transport", f"Building {t_type.value} segment header (Ports/Seq/ACK)...", 60),
+                ("L3 Network", "Appending IPv4 headers (10.0.0.1 → 10.0.5.1) & TTL...", 75),
+                ("L2 Data Link", "Framing MAC addresses & computing CRC-32 checksum...", 90),
+                ("L1 Physical", "Serializing bitstream & modeling propagation delay...", 100)
+            ]
+
+            progress_bar = st.progress(0)
+            for step_name, step_desc, pct in osi_steps:
+                osi_stepper_placeholder.markdown(f"""
+                <div class='callout-info' style='margin:0.5rem 0;'>
+                    <span class='badge badge-info'>PROCESSING {step_name}</span><br>
+                    <span style='font-size:0.8rem;'>{step_desc}</span>
+                </div>
+                """, unsafe_allow_html=True)
+                progress_bar.progress(pct)
+                time.sleep(0.12)
+
+            progress_bar.empty()
+            osi_stepper_placeholder.empty()
+
             sig, enc_trace = stack.encapsulate(
                 message_text=payload_input,
                 dst_ip="10.0.5.1",
@@ -1253,11 +1280,31 @@ with tabs[4]:
     with col_sock_right:
         st.markdown("<div class='glass-panel'><h3>Server Endpoint Verification</h3>", unsafe_allow_html=True)
 
+        sock_status_placeholder = st.empty()
+
         if send_socket_btn:
+            proto_name = "TCP" if "TCP" in sock_proto else "UDP"
+            sock_port = 9091 if proto_name == "TCP" else 9092
+
+            sock_status_placeholder.markdown(f"""
+            <div class='callout-info' style='margin:0.5rem 0;'>
+                <span class='badge badge-info'>SOCKET INITIATING</span><br>
+                Spawning background {proto_name} server on <code>127.0.0.1:{sock_port}</code>...
+            </div>
+            """, unsafe_allow_html=True)
+
             server = SocketServer()
             server.start_tcp_server()
             server.start_udp_server()
-            time.sleep(0.12)
+            time.sleep(0.15)
+
+            sock_status_placeholder.markdown(f"""
+            <div class='callout-info' style='margin:0.5rem 0;'>
+                <span class='badge badge-purple'>TRANSMITTING</span><br>
+                Client sending payload across localhost socket...
+            </div>
+            """, unsafe_allow_html=True)
+            time.sleep(0.1)
 
             client = SocketClient()
             if "TCP" in sock_proto:
@@ -1268,6 +1315,7 @@ with tabs[4]:
                 proto_name = "UDP"
 
             server.stop()
+            sock_status_placeholder.empty()
 
             if ok:
                 st.markdown(f"""
