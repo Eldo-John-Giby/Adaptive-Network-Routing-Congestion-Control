@@ -742,13 +742,16 @@ with tabs[1]:
                 """, unsafe_allow_html=True)
 
             # ── Layer 7: Application
+            app_sender = tr.l7_app.get("sender_app", tr.l7_app.get("source_app", "Endpoint-A"))
+            app_content = tr.l7_app.get("payload", tr.l7_app.get("content", ""))
+            app_id = tr.l7_app.get("msg_id", "N/A")
             st.markdown(f"""
             <div class='osi-card' style='border-left: 4px solid #8B5CF6;'>
                 <div class='osi-card-head'>
                     <div><span class='osi-layer-id' style='color:#A78BFA;'>L7</span><span class='osi-layer-name'>Application Layer</span></div>
-                    <span class='badge badge-purple'>App: {tr.l7_app['source_app']}</span>
+                    <span class='badge badge-purple'>App: {app_sender}</span>
                 </div>
-                <div class='osi-payload-box'>Payload: "{tr.l7_app['content']}" | Msg ID: {tr.l7_app['msg_id']}</div>
+                <div class='osi-payload-box'>Payload: "{app_content}" | Msg ID: {app_id}</div>
             </div>
             """, unsafe_allow_html=True)
 
