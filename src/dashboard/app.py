@@ -588,7 +588,7 @@ with tabs[0]:
             active_path=selected_display_path,
             stress_r2=stress_r2
         )
-        topo_placeholder.plotly_chart(topo_fig, use_container_width=True)
+        topo_placeholder.plotly_chart(topo_fig, use_container_width=True, key="topo_initial")
 
         # Candidate Paths Summary Table
         c_p1, c_p2, c_p3 = st.columns(3)
@@ -670,7 +670,11 @@ with tabs[0]:
                             stress_r2=stress_r2,
                             packet_pos=(curr_x, curr_y, p_label, p_color)
                         )
-                        topo_placeholder.plotly_chart(anim_fig, use_container_width=True)
+                        topo_placeholder.plotly_chart(
+                            anim_fig,
+                            use_container_width=True,
+                            key=f"topo_anim_{pkt_idx}_{h}_{step_i}_{time.time()}"
+                        )
 
                         anim_status_placeholder.markdown(f"""
                         <div class='callout-info' style='margin:0.5rem 0;'>
@@ -705,7 +709,11 @@ with tabs[0]:
                 active_path=selected_display_path,
                 stress_r2=stress_r2
             )
-            topo_placeholder.plotly_chart(final_fig, use_container_width=True)
+            topo_placeholder.plotly_chart(
+                final_fig,
+                use_container_width=True,
+                key=f"topo_final_{time.time()}"
+            )
 
             anim_status_placeholder.markdown("""
             <div class='callout-info' style='background:rgba(6, 78, 59, 0.4);border-color:#10B981;color:#A7F3D0;margin:0.5rem 0;'>
