@@ -638,6 +638,22 @@ with tabs[0]:
                     {retx_disp}
                 </div>
                 """, unsafe_allow_html=True)
+        else:
+            active_route_str = " → ".join(selected_display_path)
+            st.markdown(f"""
+            <div style='background: rgba(15, 23, 42, 0.6); border: 1px dashed rgba(71, 85, 105, 0.6); border-radius: 6px; padding: 1.1rem; margin: 0.8rem 0;'>
+                <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;'>
+                    <span style='font-size: 0.8rem; font-weight: 700; color: #CBD5E1;'>Transmission Buffer: READY</span>
+                    <span class='badge badge-info'>Awaiting Trigger</span>
+                </div>
+                <div class='mono-font' style='font-size: 0.78rem; color: #38BDF8; margin-bottom: 0.5rem;'>
+                    Target Traversal: {active_route_str}
+                </div>
+                <div style='font-size: 0.78rem; color: #94A3B8; line-height: 1.5;'>
+                    Click <strong>Transmit Packet Burst</strong> above to push {sim_packets} simulated packets across this route and stream real-time hop latency, drops, and retransmission telemetry.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
         # Dynamic Route Comparison Card
         st.markdown("<br>", unsafe_allow_html=True)
