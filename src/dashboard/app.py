@@ -476,7 +476,7 @@ def build_topology_figure(topology: NetworkTopology, active_path=None, stress_r2
             c = "#10B981" if n == "S" else "#8B5CF6"  # Emerald Source, Purple Destination
             s = 34
             b = "#34D399" if is_in_path else "#475569"
-            hover = f"<b>Endpoint {n}</b><br>IP: {node_obj.ip}<br>MAC: {node_obj.mac}"
+            hover = f"<b>Endpoint {n}</b><br>IP: {node_obj.ip_address}<br>MAC: {node_obj.mac_address}"
         elif is_stressed_node:
             c = "#DC2626"  # red for saturated R2
             s = 36
@@ -486,7 +486,7 @@ def build_topology_figure(topology: NetworkTopology, active_path=None, stress_r2
             c = "#2563EB" if is_in_path else "#1E293B"
             s = 32
             b = "#60A5FA" if is_in_path else "#475569"
-            hover = f"<b>Router {n}</b><br>IP: {node_obj.ip}<br>Queue: {q_len}/{q_max} ({q_pct:.0f}%)"
+            hover = f"<b>Router {n}</b><br>IP: {node_obj.ip_address}<br>Queue: {q_len}/{q_max} ({q_pct:.0f}%)"
 
         node_color.append(c)
         node_size.append(s)
@@ -498,7 +498,7 @@ def build_topology_figure(topology: NetworkTopology, active_path=None, stress_r2
         mode="markers+text",
         text=node_text,
         textposition="middle center",
-        textfont=dict(family="JetBrains Mono", size=12, color="#FFFFFF", weight="bold"),
+        textfont=dict(family="JetBrains Mono", size=12, color="#FFFFFF"),
         marker=dict(
             size=node_size,
             color=node_color,

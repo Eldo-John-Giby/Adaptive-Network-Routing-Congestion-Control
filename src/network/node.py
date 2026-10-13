@@ -13,6 +13,14 @@ class Node:
     mac_address: str
     is_router: bool = False
 
+    @property
+    def ip(self) -> str:
+        return self.ip_address
+
+    @property
+    def mac(self) -> str:
+        return self.mac_address
+
 class RouterNode(Node):
     def __init__(self, node_id: str, ip_address: str, mac_address: str, max_queue_size: int = 50):
         super().__init__(node_id=node_id, ip_address=ip_address, mac_address=mac_address, is_router=True)
