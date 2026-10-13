@@ -727,15 +727,15 @@ with tabs[0]:
                 badge = "<span class='badge badge-success'>DELIVERED</span>" if r.delivered else "<span class='badge badge-danger'>DROPPED</span>"
                 path_fmt = " → ".join(r.selected_path)
                 retx_disp = f"<span style='color:#F59E0B;'>{r.retransmissions} Retransmits</span>" if r.retransmissions > 0 else "<span style='color:#10B981;'>0 Retx</span>"
-                log_html += f"""
-                <div class='log-row'>
-                    {badge}
-                    <code style='color:#38BDF8;'>{r.trace_id}</code>
-                    <span style='flex-grow:1;font-size:0.75rem;'>{path_fmt}</span>
-                    <span style='color:#F8FAFC;font-weight:700;'>{r.total_latency_ms} ms</span>
-                    {retx_disp}
-                </div>
-                """
+                log_html += (
+                    f"<div class='log-row'>"
+                    f"{badge}"
+                    f"<code style='color:#38BDF8;'>{r.trace_id}</code>"
+                    f"<span style='flex-grow:1;font-size:0.75rem;'>{path_fmt}</span>"
+                    f"<span style='color:#F8FAFC;font-weight:700;'>{r.total_latency_ms} ms</span>"
+                    f"{retx_disp}"
+                    f"</div>"
+                )
             log_stream_placeholder.markdown(log_html, unsafe_allow_html=True)
         else:
             active_route_str = " → ".join(selected_display_path)
@@ -1333,12 +1333,13 @@ with tabs[4]:
                 </div>
                 """, unsafe_allow_html=True)
 
-                st.markdown(f"""
-                <div class='log-row'>
-                    <span class='badge badge-success'>ACK RECEIVED</span>
-                    <span class='mono-font' style='color:#38BDF8;'>{response}</span>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(
+                    f"<div class='log-row'>"
+                    f"<span class='badge badge-success'>ACK RECEIVED</span>"
+                    f"<span class='mono-font' style='color:#38BDF8;'>{response}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
 
                 k1, k2, k3 = st.columns(3)
                 k1.metric("Protocol", proto_name)
