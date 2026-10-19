@@ -21,8 +21,17 @@ from src.osi.packet_engine import OSIStack
 from src.osi.l4_transport import TransportType
 from src.network.topology import NetworkTopology
 from src.network.simulator import NetworkSimulator
-from src.ml.model import NetworkCongestionModel, LossCauseClassifier
-from src.ml.controller import AdaptiveMLRouter, LossAwareRouter, StaticDijkstraRouter
+try:
+    from src.ml.model import NetworkCongestionModel, LossCauseClassifier
+    from src.ml.controller import AdaptiveMLRouter, LossAwareRouter, StaticDijkstraRouter
+except ImportError:
+    import importlib
+    import src.ml.model
+    import src.ml.controller
+    importlib.reload(src.ml.model)
+    importlib.reload(src.ml.controller)
+    from src.ml.model import NetworkCongestionModel, LossCauseClassifier
+    from src.ml.controller import AdaptiveMLRouter, LossAwareRouter, StaticDijkstraRouter
 from src.network.link import inject_corruption
 from src.endpoints.socket_server import SocketServer
 from src.endpoints.socket_client import SocketClient
