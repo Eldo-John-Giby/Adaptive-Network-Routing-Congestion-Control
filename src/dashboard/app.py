@@ -21,8 +21,9 @@ from src.osi.packet_engine import OSIStack
 from src.osi.l4_transport import TransportType
 from src.network.topology import NetworkTopology
 from src.network.simulator import NetworkSimulator
-from src.ml.model import NetworkCongestionModel
-from src.ml.controller import AdaptiveMLRouter
+from src.ml.model import NetworkCongestionModel, LossCauseClassifier
+from src.ml.controller import AdaptiveMLRouter, LossAwareRouter, StaticDijkstraRouter
+from src.network.link import inject_corruption
 from src.endpoints.socket_server import SocketServer
 from src.endpoints.socket_client import SocketClient
 
@@ -337,6 +338,16 @@ if "router" not in st.session_state:
     st.session_state.router = AdaptiveMLRouter(
         st.session_state.topology, st.session_state.ml_model
     )
+if "loss_classifier" not in st.session_state:
+    loss_clf = LossCauseClassifier()
+    loss_clf.train()
+    st.session_state.loss_classifier = loss_clf
+if "loss_router" not in st.session_state:
+    st.session_state.loss_router = LossAwareRouter(
+        st.session_state.topology,
+        classifier=st.session_state.loss_classifier,
+        congestion_model=st.session_state.ml_model
+    )
 if "history" not in st.session_state:
     st.session_state.history = []
 if "last_enc_trace" not in st.session_state:
@@ -372,6 +383,7 @@ tabs = st.tabs([
     "Operations Telemetry & Diagnostics",
     "Machine Learning Decision Matrix",
     "Host Socket Interoperability",
+    "Loss-Cause Analysis",
 ])
 
 # ═══════════════════════════════════════════════════════════════
@@ -1360,6 +1372,173 @@ with tabs[4]:
             """, unsafe_allow_html=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════════
+# TAB 6 — NOVEL CONTRIBUTION: LOSS-CAUSE-AWARE CROSS-LAYER ROUTING
+# ═══════════════════════════════════════════════════════════════
+with tabs[5]:
+    st.markdown("""
+    <div class='callout-info' style='border-left-color:#10B981;background:rgba(6,78,59,0.3);'>
+        <strong>NOVEL RESEARCH CONTRIBUTION: CROSS-LAYER LOSS-CAUSE-AWARE ROUTING</strong><br>
+        Standard ML routers naively treat every packet drop as network congestion and reroute traffic.
+        Our engine inspects <strong>L2 Data Link (CRC-32 checksums)</strong> and <strong>L4 Transport (TCP retransmission & delay variance)</strong>
+        evidence to classify the root cause of degradation: <em>Physical Corruption vs Queue Buffer Congestion vs Mixed</em>,
+        executing policy-directed responses with hysteresis dampening.
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_ctrl, col_diag = st.columns([1.1, 1.3], gap="large")
+
+    with col_ctrl:
+        st.markdown("<div class='glass-panel'><h3>1. Stressor Injection & Control Plane</h3>", unsafe_allow_html=True)
+
+        sc1, sc2 = st.columns(2)
+        with sc1:
+            corruption_toggle = st.toggle("Inject L2 Link Corruption", value=False)
+            ber_val = st.slider("Bit Error Rate (BER)", min_value=0.05, max_value=0.40, value=0.20, step=0.05) if corruption_toggle else 0.0
+            st.session_state.topology.inject_link_corruption("R1", "R2", ber_val)
+
+        with sc2:
+            congestion_toggle = st.toggle("Inject L3 Queue Congestion (R2)", value=False)
+            st.session_state.topology.stress_router_r2(congestion_toggle)
+
+        st.markdown("<hr style='border-color:rgba(51,65,85,0.4);margin:0.8rem 0;'>", unsafe_allow_html=True)
+
+        h1, h2 = st.columns(2)
+        with h1:
+            conf_threshold = st.slider("Confidence Fallback Threshold", min_value=0.50, max_value=0.90, value=0.60, step=0.05)
+            st.session_state.loss_router.confidence_threshold = conf_threshold
+        with h2:
+            hysteresis_n = st.slider("Hysteresis Window (Packets)", min_value=5, max_value=40, value=20, step=5)
+            st.session_state.loss_router.hysteresis_packets = hysteresis_n
+
+        run_diag_btn = st.button("Probe Network & Classify Loss Cause", use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with col_diag:
+        st.markdown("<div class='glass-panel'><h3>2. Cross-Layer Classifier & Policy Engine</h3>", unsafe_allow_html=True)
+
+        # Extract live features from current path
+        current_p = st.session_state.loss_router.current_path
+        live_feats = st.session_state.loss_router.extract_path_features(current_p)
+        pred_cause, conf, probas = st.session_state.loss_classifier.predict_cause(live_feats)
+        chosen_path, decision = st.session_state.loss_router.select_route("S", "D", features=live_feats)
+
+        # Classification Badge
+        badge_style_map = {
+            "NORMAL": ("#064E3B", "#6EE7B7", "#059669", "NORMAL (HEALTHY)"),
+            "CORRUPTION": ("#78350F", "#FDE68A", "#D97706", "CORRUPTION (L2 BIT-FLIP)"),
+            "CONGESTION": ("#7F1D1D", "#FCA5A5", "#DC2626", "CONGESTION (L3 BUFFER OVERFLOW)"),
+            "MIXED": ("#4C1D95", "#DDD6FE", "#7C3AED", "MIXED (CONGESTION + NOISE)")
+        }
+        bg_col, txt_col, brd_col, label_str = badge_style_map.get(pred_cause, ("#1E293B", "#94A3B8", "#475569", pred_cause))
+
+        st.markdown(f"""
+        <div style='display:flex;justify-content:space-between;align-items:center;background:{bg_col};border:1px solid {brd_col};border-radius:8px;padding:0.9rem 1.2rem;margin-bottom:1rem;'>
+            <div>
+                <span style='font-size:0.75rem;color:#94A3B8;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;'>Root-Cause Classification</span>
+                <div style='font-size:1.35rem;font-weight:800;color:{txt_col};font-family:JetBrains Mono;'>{label_str}</div>
+            </div>
+            <div style='text-align:right;'>
+                <span style='font-size:0.75rem;color:#94A3B8;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;'>Confidence</span>
+                <div style='font-size:1.35rem;font-weight:800;color:#F8FAFC;font-family:JetBrains Mono;'>{conf*100:.1f}%</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Chosen Action Card
+        action_name = decision["action"]
+        act_color = "#10B981" if action_name == "RETRANSMIT_SAME_PATH" else ("#38BDF8" if action_name == "REROUTE_CONGESTION" else "#F59E0B")
+        st.markdown(f"""
+        <div style='background:rgba(15,23,42,0.8);border:1px solid rgba(51,65,85,0.7);border-left:4px solid {act_color};border-radius:6px;padding:0.75rem 1rem;margin-bottom:1rem;'>
+            <div style='font-size:0.75rem;color:#94A3B8;font-weight:700;'>RESPONSE POLICY ACTION:</div>
+            <div style='font-family:JetBrains Mono;font-size:1.05rem;font-weight:800;color:{act_color};margin:0.2rem 0;'>{action_name}</div>
+            <div style='font-size:0.8rem;color:#CBD5E1;'>{decision['reason']}</div>
+            <div style='font-size:0.78rem;color:#64748B;margin-top:0.4rem;'>Active Route: <code>{' -> '.join(chosen_path)}</code> | Hysteresis Count: <code>{decision['packets_on_current_path']}/{hysteresis_n}</code></div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Probability Distribution Bar
+        prob_df = pd.DataFrame([{"Class": k, "Probability": v} for k, v in probas.items()])
+        fig_prob = px.bar(
+            prob_df, x="Probability", y="Class", orientation="h",
+            color="Class",
+            color_discrete_map={
+                "NORMAL": "#10B981", "CONGESTION": "#EF4444",
+                "CORRUPTION": "#F59E0B", "MIXED": "#8B5CF6"
+            },
+            height=140
+        )
+        fig_prob.update_layout(
+            template="plotly_dark",
+            margin=dict(l=10, r=10, t=10, b=10),
+            showlegend=False,
+            xaxis=dict(range=[0, 1.0], showgrid=True),
+            yaxis=dict(title=None)
+        )
+        st.plotly_chart(fig_prob, use_container_width=True, key="loss_cause_prob_chart")
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # Cross-Layer Telemetry Signals Grid
+    st.markdown("<div class='glass-panel'><h3>3. Cross-Layer Telemetry Observable Space</h3>", unsafe_allow_html=True)
+    m1, m2, m3, m4, m5 = st.columns(5)
+    with m1:
+        st.metric("L2 CRC Fail Rate", f"{live_feats.get('crc_fail_rate', 0.0)*100:.1f}%")
+    with m2:
+        st.metric("L4 Retransmission Rate", f"{live_feats.get('retransmission_rate', 0.0)*100:.1f}%")
+    with m3:
+        st.metric("L4 RTT Variance", f"{live_feats.get('rtt_variance', 0.0):.2f} ms²")
+    with m4:
+        st.metric("L3 Queue Occupancy", f"{live_feats.get('queue_occupancy_pct', 0.0):.1f}%")
+    with m5:
+        st.metric("L3 Queue Slope", f"{live_feats.get('queue_slope', 0.0):+.2f} %/step")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Comparative Benchmark Section
+    st.markdown("<div class='glass-panel'><h3>4. Multi-Router Empirical Benchmark Suite</h3>", unsafe_allow_html=True)
+    csv_file = os.path.join(os.path.dirname(__file__), "../../results/experiment_results.csv")
+    if os.path.exists(csv_file):
+        exp_df = pd.read_csv(csv_file)
+        sc_select = st.selectbox("Filter Benchmark by Scenario", exp_df["scenario"].unique(), index=1)
+        sub_exp = exp_df[exp_df["scenario"] == sc_select]
+
+        b1, b2 = st.columns(2)
+        with b1:
+            fig_cmp_reroutes = px.bar(
+                sub_exp, x="router", y="needless_reroutes",
+                color="router",
+                color_discrete_map={
+                    "StaticDijkstra": "#64748B",
+                    "AdaptiveMLRouter": "#EF4444",
+                    "LossAwareRouter": "#10B981",
+                    "LossAwareRouter_Ablation": "#F59E0B"
+                },
+                title=f"Needless Reroutes — {sc_select.upper()} (Lower is Better)"
+            )
+            fig_cmp_reroutes.update_layout(template="plotly_dark", showlegend=False, height=280)
+            st.plotly_chart(fig_cmp_reroutes, use_container_width=True, key=f"reroute_bar_{sc_select}")
+
+        with b2:
+            fig_cmp_lat = px.bar(
+                sub_exp, x="router", y="mean_latency_ms",
+                color="router",
+                color_discrete_map={
+                    "StaticDijkstra": "#64748B",
+                    "AdaptiveMLRouter": "#EF4444",
+                    "LossAwareRouter": "#10B981",
+                    "LossAwareRouter_Ablation": "#F59E0B"
+                },
+                title=f"Mean Latency (ms) — {sc_select.upper()} (Lower is Better)"
+            )
+            fig_cmp_lat.update_layout(template="plotly_dark", showlegend=False, height=280)
+            st.plotly_chart(fig_cmp_lat, use_container_width=True, key=f"lat_bar_{sc_select}")
+
+        st.dataframe(sub_exp, use_container_width=True)
+    else:
+        st.info("Run `python run_experiments.py` to populate real empirical benchmark data.")
+    st.markdown("</div>", unsafe_allow_html=True)
+
 
 # ─────────────────────────────────────────────
 # FOOTER ATTRIBUTION
