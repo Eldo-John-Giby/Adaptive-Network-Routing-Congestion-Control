@@ -43,7 +43,8 @@ class AdaptiveMLRouter:
             link = self.topology.get_link(u, v)
             if link:
                 total_delay += link.calculate_link_delay()
-                max_loss = max(max_loss, link.packet_loss_rate * 100.0)
+                observed_loss = (link.packet_loss_rate + link.crc_fail_rate) * 100.0
+                max_loss = max(max_loss, min(100.0, observed_loss))
                 max_conn = max(max_conn, link.active_connections)
                 min_bw = min(min_bw, link.bandwidth_mbps)
 
@@ -124,3 +125,252 @@ class AdaptiveMLRouter:
         # Select best non-congested route, or lowest predicted delay
         best_eval = evals[0]
         return best_eval.path, best_eval
+
+    def select_route(self, src: str = "S", dst: str = "D", features: Optional[dict] = None) -> Tuple[List[str], dict]:
+        if not hasattr(self, "current_path"):
+            self.current_path = None
+        if not hasattr(self, "reroute_count"):
+            self.reroute_count = 0
+        if not hasattr(self, "needless_reroute_count"):
+            self.needless_reroute_count = 0
+
+        best_path, best_eval = self.select_best_route(src, dst)
+        rerouted = False
+        if self.current_path is None:
+            self.current_path = list(best_path)
+        elif best_path != self.current_path:
+            rerouted = True
+            self.reroute_count += 1
+            self.current_path = list(best_path)
+
+        return best_path, {
+            "action": "ADAPTIVE_ML_REROUTE" if rerouted else "MAINTAIN_PATH",
+            "chosen_path": best_path,
+            "predicted_cause": best_eval.congestion_label,
+            "confidence": best_eval.confidence,
+            "rerouted": rerouted,
+            "eval": best_eval
+        }
+
+
+class StaticDijkstraRouter:
+    """
+    Baseline Router: Always selects the static shortest path based on base propagation latency.
+    Never adapts or reroutes.
+    """
+    def __init__(self, topology: NetworkTopology):
+        self.topology = topology
+        self.reroute_count = 0
+        self.needless_reroute_count = 0
+        self.current_path, _ = self.topology.dijkstra_shortest_path("S", "D", use_live_metrics=False)
+
+    def select_route(self, src: str = "S", dst: str = "D", features: Optional[dict] = None) -> Tuple[List[str], dict]:
+        path, cost = self.topology.dijkstra_shortest_path(src, dst, use_live_metrics=False)
+        self.current_path = path
+        return path, {
+            "action": "STATIC_DIJKSTRA",
+            "chosen_path": path,
+            "predicted_cause": "N/A",
+            "confidence": 1.0,
+            "rerouted": False,
+            "cost": cost
+        }
+
+StaticDijkstra = StaticDijkstraRouter
+
+
+class LossAwareRouter:
+    """
+    Novel Cross-Layer, Loss-Cause-Aware Router.
+    Classifies degradation causes using L2 (CRC) and L4 (TCP retransmission/variance) evidence,
+    then executes adaptive response policies:
+    - CORRUPTION: Retransmit on the same path, do not reroute.
+    - CONGESTION: Reroute using path-ranking logic.
+    - MIXED / LOW CONFIDENCE (< threshold): Fall back to Dijkstra base shortest path.
+    - Hysteresis: Hold newly chosen paths for N packets before allowing further switches.
+    """
+    def __init__(
+        self,
+        topology: NetworkTopology,
+        classifier: Optional['LossCauseClassifier'] = None,
+        congestion_model: Optional[NetworkCongestionModel] = None,
+        confidence_threshold: float = 0.60,
+        hysteresis_packets: int = 20,
+        current_path: Optional[List[str]] = None,
+        use_cross_layer_features: bool = True
+    ):
+        from .model import LossCauseClassifier
+        self.topology = topology
+        self.confidence_threshold = confidence_threshold
+        self.hysteresis_packets = hysteresis_packets
+        self.use_cross_layer_features = use_cross_layer_features
+
+        self.classifier = classifier or LossCauseClassifier(
+            random_state=42, use_cross_layer_features=use_cross_layer_features
+        )
+        if not self.classifier.is_trained:
+            self.classifier.train()
+
+        self.congestion_model = congestion_model or NetworkCongestionModel()
+        if not self.congestion_model.is_trained:
+            self.congestion_model.train()
+
+        # Route state
+        default_dijkstra, _ = self.topology.dijkstra_shortest_path("S", "D", use_live_metrics=False)
+        self.current_path: List[str] = list(current_path) if current_path else default_dijkstra
+        # Initial path allows immediate reroute if stressed
+        self.packets_on_current_path: int = self.hysteresis_packets
+        self.reroute_count: int = 0
+        self.needless_reroute_count: int = 0
+
+    def reset_state(self):
+        default_dijkstra, _ = self.topology.dijkstra_shortest_path("S", "D", use_live_metrics=False)
+        self.current_path = default_dijkstra
+        self.packets_on_current_path = self.hysteresis_packets
+        self.reroute_count = 0
+        self.needless_reroute_count = 0
+
+    def extract_path_features(self, path: List[str]) -> dict:
+        total_delay = 0.0
+        max_queue_occ = 0.0
+        max_loss = 0.0
+        max_conn = 1
+        min_bw = 1000.0
+        bottleneck_node = None
+        max_crc_fail_rate = 0.0
+        max_retrans_rate = 0.0
+        sum_rtt_variance = 0.0
+        max_queue_slope = 0.0
+
+        for i in range(len(path) - 1):
+            u, v = path[i], path[i+1]
+            link = self.topology.get_link(u, v)
+            if link:
+                total_delay += link.calculate_link_delay()
+                observed_loss = (link.packet_loss_rate + link.crc_fail_rate) * 100.0
+                max_loss = max(max_loss, min(100.0, observed_loss))
+                max_conn = max(max_conn, link.active_connections)
+                min_bw = min(min_bw, link.bandwidth_mbps)
+                max_crc_fail_rate = max(max_crc_fail_rate, link.crc_fail_rate)
+                max_retrans_rate = max(max_retrans_rate, link.retransmission_rate)
+                sum_rtt_variance += link.rtt_variance
+
+            node_v = self.topology.nodes.get(v)
+            if isinstance(node_v, RouterNode):
+                q_occ = node_v.queue_occupancy_ratio * 100.0
+                if q_occ > max_queue_occ:
+                    max_queue_occ = q_occ
+                    bottleneck_node = v
+                total_delay += node_v.queue_length * 2.0
+                max_queue_slope = max(max_queue_slope, node_v.get_queue_slope())
+
+        packet_rate = 150.0 + (max_queue_occ * 20.0)
+
+        return {
+            "bandwidth_mbps": min_bw,
+            "packet_rate_pps": packet_rate,
+            "queue_occupancy_pct": max_queue_occ,
+            "rtt_ms": total_delay * 2.0,
+            "loss_rate_pct": max_loss,
+            "active_connections": max_conn,
+            "crc_fail_rate": max_crc_fail_rate,
+            "retransmission_rate": max_retrans_rate,
+            "rtt_variance": round(sum_rtt_variance, 4),
+            "queue_slope": max_queue_slope,
+            "bottleneck_node": bottleneck_node,
+            "accumulated_delay_ms": total_delay
+        }
+
+    def _rank_and_select_alternate_path(self, src: str = "S", dst: str = "D") -> List[str]:
+        """Evaluates candidate paths using path-ranking logic and picks the best route."""
+        candidate_paths = self.topology.get_candidate_paths(src, dst)
+        evals = []
+        for path in candidate_paths:
+            feats = self.extract_path_features(path)
+            cong_label, conf, pred_delay = self.congestion_model.predict_state(feats)
+            penalty = 200.0 if cong_label == "HIGH" else (50.0 if cong_label == "MEDIUM" else 0.0)
+            score = pred_delay + penalty
+            evals.append((score, path))
+
+        evals.sort(key=lambda x: x[0])
+        return evals[0][1] if evals else self.current_path
+
+    def select_route(
+        self,
+        src: str = "S",
+        dst: str = "D",
+        features: Optional[dict] = None
+    ) -> Tuple[List[str], dict]:
+        """
+        Executes loss-cause classification and policy enforcement.
+        Returns (chosen_path, decision_dict).
+        """
+        if not self.current_path:
+            self.current_path, _ = self.topology.dijkstra_shortest_path(src, dst, use_live_metrics=False)
+
+        path_features = features if features is not None else self.extract_path_features(self.current_path)
+        pred_cause, confidence, probas = self.classifier.predict_cause(path_features)
+
+        hysteresis_active = self.packets_on_current_path < self.hysteresis_packets
+        action = "MAINTAIN_PATH"
+        reason = ""
+        chosen_path = list(self.current_path)
+
+        if hysteresis_active:
+            action = "HOLD_HYSTERESIS"
+            reason = f"Hysteresis active ({self.packets_on_current_path}/{self.hysteresis_packets} pkts): holding path {self.current_path}"
+            chosen_path = list(self.current_path)
+        else:
+            if confidence < self.confidence_threshold:
+                action = "FALLBACK_DIJKSTRA"
+                reason = f"Confidence {confidence:.3f} below threshold {self.confidence_threshold}: fallback to Dijkstra"
+                dijkstra_path, _ = self.topology.dijkstra_shortest_path(src, dst, use_live_metrics=False)
+                chosen_path = dijkstra_path
+
+            elif pred_cause == "CORRUPTION":
+                action = "RETRANSMIT_SAME_PATH"
+                reason = f"L2 CRC corruption detected (fail_rate={path_features.get('crc_fail_rate', 0):.2f}). Retransmit on current path; avoid needless reroute"
+                chosen_path = list(self.current_path)
+
+            elif pred_cause == "CONGESTION":
+                action = "REROUTE_CONGESTION"
+                reason = f"Congestion detected (queue={path_features.get('queue_occupancy_pct', 0):.1f}%, slope={path_features.get('queue_slope', 0):.2f}). Rerouting traffic"
+                chosen_path = self._rank_and_select_alternate_path(src, dst)
+
+            elif pred_cause == "MIXED":
+                action = "FALLBACK_DIJKSTRA"
+                reason = "Concurrent congestion and corruption: fallback to base Dijkstra shortest path"
+                dijkstra_path, _ = self.topology.dijkstra_shortest_path(src, dst, use_live_metrics=False)
+                chosen_path = dijkstra_path
+
+            else:  # NORMAL
+                action = "MAINTAIN_PATH"
+                reason = "Network operating normally; optimal path maintained"
+                chosen_path = list(self.current_path)
+
+        # Update hysteresis and reroute counters
+        rerouted = (chosen_path != self.current_path)
+        if rerouted:
+            self.current_path = list(chosen_path)
+            self.packets_on_current_path = 0
+            self.reroute_count += 1
+            if pred_cause == "CORRUPTION":
+                self.needless_reroute_count += 1
+        else:
+            self.packets_on_current_path += 1
+
+        decision = {
+            "action": action,
+            "chosen_path": chosen_path,
+            "predicted_cause": pred_cause,
+            "confidence": round(confidence, 4),
+            "probabilities": probas,
+            "rerouted": rerouted,
+            "held_by_hysteresis": hysteresis_active,
+            "packets_on_current_path": self.packets_on_current_path,
+            "reason": reason,
+            "path_features": path_features
+        }
+
+        return chosen_path, decision
+
