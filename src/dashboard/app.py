@@ -10,6 +10,11 @@ import json
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
+# Invalidate cached project modules so hot reloads on Streamlit Cloud pick up fresh code from disk
+for mod_name in list(sys.modules.keys()):
+    if mod_name.startswith("src.") or mod_name == "src":
+        del sys.modules[mod_name]
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -21,17 +26,8 @@ from src.osi.packet_engine import OSIStack
 from src.osi.l4_transport import TransportType
 from src.network.topology import NetworkTopology
 from src.network.simulator import NetworkSimulator
-try:
-    from src.ml.model import NetworkCongestionModel, LossCauseClassifier
-    from src.ml.controller import AdaptiveMLRouter, LossAwareRouter, StaticDijkstraRouter
-except ImportError:
-    import importlib
-    import src.ml.model
-    import src.ml.controller
-    importlib.reload(src.ml.model)
-    importlib.reload(src.ml.controller)
-    from src.ml.model import NetworkCongestionModel, LossCauseClassifier
-    from src.ml.controller import AdaptiveMLRouter, LossAwareRouter, StaticDijkstraRouter
+from src.ml.model import NetworkCongestionModel, LossCauseClassifier
+from src.ml.controller import AdaptiveMLRouter, LossAwareRouter, StaticDijkstraRouter
 from src.network.link import inject_corruption
 from src.endpoints.socket_server import SocketServer
 from src.endpoints.socket_client import SocketClient

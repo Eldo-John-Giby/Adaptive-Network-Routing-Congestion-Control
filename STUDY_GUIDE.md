@@ -1,284 +1,347 @@
 # Comprehensive Team Study Guide: Adaptive Network Routing & Congestion Control (ML-Enhanced)
 
-> **Written for Team Members:** Shreejith J, Pooja Iykkarath Santhosh, Hemal Kamineni, Eldo John Giby, Anfy Sony  
-> **Course:** Computer Networks (Lab Project & Viva Preparation)  
-> **Repository:** [Adaptive-Network-Routing-Congestion-Control](https://github.com/Eldo-John-Giby/Adaptive-Network-Routing-Congestion-Control.git)
+> **Prepared For:** Shreejith J, Pooja Iykkarath Santhosh, Hemal Kamineni, Eldo John Giby, Anfy Sony  
+> **Course:** Computer Networks — Final Lab Project, Demo & Viva Preparation  
+> **Repository:** [Adaptive-Network-Routing-Congestion-Control](https://github.com/Eldo-John-Giby/Adaptive-Network-Routing-Congestion-Control.git)  
+> **Test Status:** 22/22 Automated Tests Passing [OK]
 
 ---
 
 ## Table of Contents
-1. [The 30-Second Elevator Pitch (What Did We Build?)](#1-the-30-second-elevator-pitch)
-2. [The 7-Layer OSI Stack Explained Simply](#2-the-7-layer-osi-stack-explained-simply)
-3. [The Network Topology (Figure 5)](#3-the-network-topology)
-4. [Machine Learning in Our Project (Why & How?)](#4-machine-learning-in-our-project)
-5. [Our Novel Contribution: Loss-Cause-Aware Routing](#5-our-novel-contribution-loss-cause-aware-routing)
-6. [Interactive Dashboard Walkthrough (Tabs 1 to 6)](#6-interactive-dashboard-walkthrough)
-7. [The 4 Routing Strategies Compared](#7-the-4-routing-strategies-compared)
-8. [How to Run the Code](#8-how-to-run-the-code)
-9. [Viva & Lab Presentation Cheat Sheet (Q&A)](#9-viva--lab-presentation-cheat-sheet)
+1. [What is This Project? (Explain Like I'm Five)](#1-what-is-this-project-explain-like-im-five)
+2. [Why Did We Build It? (The Real-World Problem)](#2-why-did-we-build-it-the-real-world-problem)
+3. [The Complete Packet Journey (End-to-End Workflow)](#3-the-complete-packet-journey-end-to-end-workflow)
+4. [The 7-Layer OSI Stack Explained in Plain English](#4-the-7-layer-osi-stack-explained-in-plain-english)
+5. [The Network Topology (Figure 5) & The 3 Routes](#5-the-network-topology-figure-5--the-3-routes)
+6. [Machine Learning in Our Project (The Router's Brain)](#6-machine-learning-in-our-project-the-routers-brain)
+7. [Our Novel Contribution: Loss-Cause-Aware Routing](#7-our-novel-contribution-loss-cause-aware-routing)
+8. [Dashboard Walkthrough (Tabs 1 to 6 Explained Simply)](#8-dashboard-walkthrough-tabs-1-to-6-explained-simply)
+9. [Empirical Benchmark Results (Real Measured Numbers)](#9-empirical-benchmark-results-real-measured-numbers)
+10. [How to Run and Demonstrate the Code](#10-how-to-run-and-demonstrate-the-code)
+11. [Viva & Oral Exam Defense Cheat Sheet (Q&A)](#11-viva--oral-exam-defense-cheat-sheet-qa)
 
 ---
 
-## 1. The 30-Second Elevator Pitch
+## 1. What is This Project? (Explain Like I'm Five)
 
-### What is this project?
-If the professor or external examiner asks: **"What did your group do?"**, here is your exact 2-sentence response:
+### The Core Analogy: Google Maps for Internet Packets
+Imagine you want to drive from **Source (S)** to **Destination (D)**. 
 
-> *"We built a complete Python network simulator that implements all **seven OSI layers** from scratch with packet encapsulation and real TCP/UDP socket interop. On top of that, we built a **Machine Learning closed-loop controller** that monitors live router queues and dynamically reroutes packets to avoid congestion, cutting latency by over 50 ms."*
+- **Traditional Routing (Dijkstra's Algorithm):**  
+  Like an old paper road atlas. It picks Highway 1 because it has the shortest physical mileage on paper (24 ms). But the paper map has **no idea** that an accident just occurred on Highway 1 and 500 cars are stuck in a bumper-to-bumper traffic jam. It will keep telling cars to drive straight into the jam!
+  
+- **Our ML-Enhanced Adaptive Router:**  
+  Like **Google Maps with live traffic**. It constantly monitors how crowded each router's waiting queue is. The moment Router R2 starts jamming up, the ML model detects the slowdown and immediately redirects new packets onto an open detour (Route 2 via Router R3), saving over **50 ms** of travel time!
 
-### What is the novel research part?
-> *"Most ML routers assume every lost packet means network congestion. Our novel contribution is **Cross-Layer Loss-Cause-Aware Routing**: we inspect Layer 2 CRC errors and Layer 4 TCP retransmissions to diagnose whether loss was caused by physical wire noise or router buffer overflow, eliminating needless route flapping."*
+- **Our Novel Research Feature (Loss-Cause Awareness):**  
+  What if a single pothole bumps your car (a random electrical bit-flip on the wire), but the road itself is completely empty?  
+  - Existing AI routers panic and think: *"A bump! The road must be jammed! Detour immediately!"* (This is called **Route Flapping**).
+  - Our router checks both the bump (**Layer 2 CRC checksum**) and the traffic speed (**Layer 3 Queue + Layer 4 TCP**). It realizes: *"The road is empty, just patch the tire and keep driving on the same highway!"*
 
----
-
-## 2. The 7-Layer OSI Stack Explained Simply
-
-In networking, data doesn't just teleport from device A to device B. It goes down a 7-step assembly line at the sender (**Encapsulation**), travels over the physical wire, and goes up a reverse assembly line at the receiver (**Decapsulation**).
-
-```
-SENDER (Endpoint S)                               RECEIVER (Endpoint D)
-┌──────────────────────┐                         ┌──────────────────────┐
-│  L7: Application     │ "Hello World"           │  L7: Application     │ Reads "Hello World"
-├──────────────────────┤                         ├──────────────────────┤
-│  L6: Presentation    │ JSON format + compress  │  L6: Presentation    │ Decompress + parse JSON
-├──────────────────────┤                         ├──────────────────────┤
-│  L5: Session         │ Auth token + Session ID │  L5: Session         │ Validates Session ID
-├──────────────────────┤                         ├──────────────────────┤
-│  L4: Transport       │ TCP Seq/Ack or UDP port │  L4: Transport       │ TCP Ack check / Retransmit
-├──────────────────────┤                         ├──────────────────────┤
-│  L3: Network         │ IP Header (Src/Dst, TTL)│  L3: Network         │ Verifies Dst IP & decrements TTL
-├──────────────────────┤                         ├──────────────────────┤
-│  L2: Data Link       │ MAC address + CRC-32    │  L2: Data Link       │ Recalculates CRC-32 (Error check)
-├──────────────────────┤                         ├──────────────────────┤
-│  L1: Physical        │ Converted to 01010101   │  L1: Physical        │ Reads raw electrical bits
-└──────────────────────┘                         └──────────────────────┘
-         │                                                  ▲
-         └───────────── Transmitted over Wire ──────────────┘
-```
-
-### Layer-by-Layer Breakdown in Our Code (`src/osi/`)
-
-| Layer | File | What it actually does in our project |
-|:---|:---|:---|
-| **L7 Application** | `l7_application.py` | Generates messages (like sensor readings or text). Assigns unique `msg_id`. |
-| **L6 Presentation** | `l6_presentation.py` | Converts text to UTF-8/JSON. Optionally runs **zlib compression** to reduce packet size. |
-| **L5 Session** | `l5_session.py` | Manages connection states (`IDLE`, `CONNECTING`, `ESTABLISHED`, `ACTIVE`). Attaches session tokens so endpoints know who is talking. |
-| **L4 Transport** | `l4_transport.py` | Handles two protocols:<br>• **TCP**: Has sequence numbers (`seq_num`), ACK numbers, and triggers retransmissions if a packet is lost or corrupted.<br>• **UDP**: Fast, lightweight datagram, no ACK, no retransmissions. |
-| **L3 Network** | `l3_network.py` | Adds Source IP (`10.0.0.1`) and Destination IP (`10.0.5.1`). Has a **TTL (Time To Live)** counter that drops by 1 at each router hop to prevent infinite routing loops. |
-| **L2 Data Link** | `l2_datalink.py` | Adds Source and Destination MAC addresses. Computes a **CRC-32 checksum** (a math hash of the frame). If even 1 bit is flipped on the wire, the checksum fails and the frame is rejected! |
-| **L1 Physical** | `l1_physical.py` | Turns the whole frame into a binary bitstream (`"01101001..."`). Calculates real transmission delay ($T_{tx} = \text{bits} / \text{bandwidth}$) and propagation delay ($T_{prop} = \text{distance} / \text{speed of light}$). |
+### In One Formal Sentence:
+> *"Our project is a full-stack Python networking system that simulates all seven OSI layers from scratch, implements a multi-hop router network, and uses a Random Forest Machine Learning controller to dynamically steer packets around congested routers while distinguishing between physical wire noise and buffer congestion."*
 
 ---
 
-## 3. The Network Topology
+## 2. Why Did We Build It? (The Real-World Problem)
 
-Our project models the multi-hop network defined in **Figure 5** of the project specification.
+In real computer networks (like the Internet, enterprise backbones, and 5G cellular systems), two major issues break traditional routing:
 
-```
-       (8ms)             (5ms)             (4ms)
-  [S] ---------> [R1] ------------> [R2] ------------> [R4] ---------> [D] (7ms)
-   |              |                                     ^        ^
-   | (14ms)       | (6ms)                               | (3ms)  |
-   +------------> [R3] ---------------------------------+--------+
-```
-
-### The 3 Paths from Source (S) to Destination (D):
-1. **Route 1 (via R2)**: `S -> R1 -> R2 -> R4 -> D`  
-   Base latency: $8 + 5 + 4 + 7 = \mathbf{24\text{ ms}}$.  
-   *(Under normal conditions, this is the primary route).*
-2. **Route 2 (via R3)**: `S -> R1 -> R3 -> R4 -> D`  
-   Base latency: $8 + 6 + 3 + 7 = \mathbf{24\text{ ms}}$.  
-   *(Backup route when R2 is congested).*
-3. **Route 3 (direct R3)**: `S -> R3 -> R4 -> D`  
-   Base latency: $14 + 3 + 7 = \mathbf{24\text{ ms}}$.  
-   *(Bypasses R1 and R2 entirely).*
-
-### What is Router Queue Buffer? (`RouterNode` in `src/network/node.py`)
-Each router has a finite buffer queue (capacity = 50 packets).
-- If packets arrive faster than the router can send them out, the queue fills up.
-- Every packet sitting in queue adds **queuing delay** ($+2\text{ ms}$ per packet).
-- If the queue hits 50 packets, **Buffer Overflow / Tail Drop** occurs! The router drops new packets.
+1. **Bufferbloat & Congestion Drops:**
+   Routers have small memory buffers (queues) to hold packets when traffic spikes. When packets arrive faster than the outgoing wire can transmit them, the buffer overflows (**Tail Drop**). Packets get dropped, Round-Trip Times (RTT) inflate, and video calls freeze.
+   
+2. **Noise vs Congestion Confusion:**
+   Packets can be lost for two totally different reasons:
+   - **Reason A (Congestion):** The router buffer filled up and threw the packet in the trash.
+   - **Reason B (Corruption):** Cosmic rays, loose wires, or wireless static flipped a single `0` to a `1`. The packet reached the router instantly, but the CRC integrity check failed.
+   
+   If a router treats Reason B like Reason A, it constantly bounces traffic back and forth across alternate routes for no good reason. **Our project solves this exact problem.**
 
 ---
 
-## 4. Machine Learning in Our Project
+## 3. The Complete Packet Journey (End-to-End Workflow)
 
-### Why can't we just use Dijkstra's Algorithm?
-Standard Dijkstra calculates the shortest path based on **static wire distance** (propagation latency). It is completely blind to live traffic jams! Even if Router R2 has 40 packets queued up and is dropping packets, standard Dijkstra will keep blindly sending packets to R2!
+What actually happens inside our code when a packet is sent from **Source S** to **Destination D**?
 
-### How Our ML Model Works (`src/ml/model.py`)
+```
+[Endpoint S]                                                    [Endpoint D]
+  │                                                               ▲
+  ├─ 1. Application (L7): Creates message "Telemetry Data"         │
+  ├─ 2. Presentation (L6): Serializes to JSON, zlib compresses     │
+  ├─ 3. Session (L5): Generates unique Session Token              │
+  ├─ 4. Transport (L4): Attaches TCP Seq/Ack (or UDP port)         │
+  ├─ 5. Network (L3): Adds IP header (10.0.0.1 -> 10.0.5.1, TTL=64)│
+  ├─ 6. Data Link (L2): Adds MAC addresses + CRC-32 checksum       │
+  └─ 7. Physical (L1): Converts frame into raw bitstream (010101)  │
+             │                                                    │
+             ▼                                                    │
+    [ROUTING CONTROLLER]                                          │
+    Checks ML telemetry: Is R2 congested?                         │
+    - If Clean: Picks Path 1 (S -> R1 -> R2 -> R4 -> D)           │
+    - If Congested: Detours to Path 2 (S -> R1 -> R3 -> R4 -> D)   │
+             │                                                    │
+             ▼                                                    │
+    [HOP-BY-HOP SIMULATION]                                       │
+    Packet traverses intermediate routers:                        │
+    - Router queue delay added (2 ms per queued packet)            │
+    - Wire propagation delay added                                │
+    - Link corruption check (BER bit-flip check)                  │
+    - Router decrements TTL (TTL = TTL - 1)                       │
+             │                                                    │
+             └────────────────────────────────────────────────────┘
+                                  │
+  Receiver executes reverse DECAPSULATION (L1 -> L7):
+  - L1: Reads bitstream
+  - L2: Recomputes CRC-32 (If corrupt -> drop frame)
+  - L3: Verifies Destination IP
+  - L4: Verifies TCP Seq # and sends ACK (If corrupt -> triggers TCP Retransmit)
+  - L5: Validates Session Token
+  - L6: Decompresses JSON
+  - L7: Delivers message payload to destination application!
+```
+
+---
+
+## 4. The 7-Layer OSI Stack Explained in Plain English
+
+The OSI model divides network communication into 7 distinct layers. In our code, each layer lives in its own dedicated Python file inside `src/osi/`:
+
+```
+┌────────────────────────────────────────────────────────┐
+│ 7. Application  ─── What the user sends ("Hello")      │  src/osi/l7_application.py
+│ 6. Presentation ─── Formatting & compression (JSON/zlib)│ src/osi/l6_presentation.py
+│ 5. Session      ─── Manages connections & auth tokens  │  src/osi/l5_session.py
+│ 4. Transport    ─── Reliability (TCP Seq/Ack vs UDP)   │  src/osi/l4_transport.py
+│ 3. Network      ─── Addressing & Hop limit (IP, TTL)   │  src/osi/l3_network.py
+│ 2. Data Link    ─── Error detection (MAC & CRC-32)     │  src/osi/l2_datalink.py
+│ 1. Physical     ─── Raw bits on the wire (010101, dBm) │  src/osi/l1_physical.py
+└────────────────────────────────────────────────────────┘
+```
+
+### Layer Details Table
+
+| Layer # & Name | File in Code | Plain English Explanation | Exact Data Added to Packet |
+|:---|:---|:---|:---|
+| **L7 Application** | `l7_application.py` | The message itself. Generates payload and unique message ID. | `msg_id`, `data`, `timestamp` |
+| **L6 Presentation** | `l6_presentation.py` | The translator. Encodes text to UTF-8/JSON and optionally compresses it using zlib to save wire bandwidth. | `encoding: "utf-8"`, `compression: "zlib"` |
+| **L5 Session** | `l5_session.py` | The handshake manager. Keeps track of whether a conversation is open, active, or terminated. | `session_id`, `auth_token`, `state` |
+| **L4 Transport** | `l4_transport.py` | The delivery guarantee. Handles **TCP** (with sequence numbers, ACKs, and retransmissions) or **UDP** (fast, fire-and-forget). | `src_port`, `dst_port`, `seq_num`, `ack_num`, `flags` |
+| **L3 Network** | `l3_network.py` | The global postal address. Assigns IP addresses and sets a **TTL (Time-To-Live)** counter. Every router decrements TTL by 1 so packets can never loop forever. | `src_ip: "10.0.0.1"`, `dst_ip: "10.0.5.1"`, `ttl: 64` |
+| **L2 Data Link** | `l2_datalink.py` | The local security seal. Adds MAC addresses and calculates a **CRC-32 checksum**. If even 1 bit changes during transit, CRC fails and the frame is rejected! | `src_mac`, `dst_mac`, `crc32_checksum` |
+| **L1 Physical** | `l1_physical.py` | The actual wire. Converts the entire packet structure into binary zeros and ones (`"01101001..."`) and calculates physical transmission delay. | `bitstream`, `signal_power_dbm`, `tx_delay_ms` |
+
+---
+
+## 5. The Network Topology (Figure 5) & The 3 Routes
+
+Our simulator models the standard 6-node network specified in **Figure 5**:
+
+```
+           (8ms)                (5ms)                (4ms)
+     [S] ----------> [R1] -------------> [R2] -------------> [R4] ----------> [D] (7ms)
+      |               |                                       ^        ^
+      | (14ms)        | (6ms)                                 | (3ms)  |
+      +-------------> [R3] -----------------------------------+--------+
+```
+
+### The 3 Possible Paths from Source (S) to Destination (D):
+
+1. **Path 1 (Default Primary Route via R2):**  
+   `S -> R1 -> R2 -> R4 -> D`  
+   - Hop delays: $8\text{ ms} + 5\text{ ms} + 4\text{ ms} + 7\text{ ms} = \mathbf{24\text{ ms}}$.  
+   - *Under normal conditions, this is the fastest, lowest-latency path.*
+
+2. **Path 2 (Alternate Detour via R3):**  
+   `S -> R1 -> R3 -> R4 -> D`  
+   - Hop delays: $8\text{ ms} + 6\text{ ms} + 3\text{ ms} + 7\text{ ms} = \mathbf{24\text{ ms}}$.  
+   - *Used when Router R2 is congested.*
+
+3. **Path 3 (Direct Bypass Route):**  
+   `S -> R3 -> R4 -> D`  
+   - Hop delays: $14\text{ ms} + 3\text{ ms} + 7\text{ ms} = \mathbf{24\text{ ms}}$.  
+   - *Bypasses both R1 and R2 entirely if R1 fails.*
+
+### Router Buffer Queues (`RouterNode` in `src/network/node.py`):
+- Every router has a queue capacity of **50 packets**.
+- Each packet sitting in queue adds **+2 ms of queuing delay**.
+- If the queue reaches 50 packets, **Buffer Overflow / Tail Drop** occurs and incoming packets are permanently lost!
+
+---
+
+## 6. Machine Learning in Our Project (The Router's Brain)
+
+### Why not just use standard Dijkstra's Algorithm?
+Dijkstra's Algorithm only knows **static link distances** (propagation delay). It has no awareness of real-time traffic jams! If Router R2 has 40 packets queued up and is dropping data, static Dijkstra will keep blindly sending all traffic directly into R2.
+
+### How Our Random Forest Model Works (`src/ml/model.py`)
 We train a **Random Forest** (ensemble of 100 decision trees) on live network telemetry features:
-1. `bandwidth_mbps`: Channel capacity
-2. `packet_rate_pps`: Packet arrival frequency
-3. `queue_occupancy_pct`: How full the router buffer queue is (0% to 100%)
+
+1. `queue_occupancy_pct`: How full the router queue is (0% to 100%)
+2. `packet_rate_pps`: Packets arriving per second
+3. `bandwidth_mbps`: Link transmission capacity
 4. `rtt_ms`: Round Trip Time
 5. `loss_rate_pct`: Dropped packet percentage
-6. `active_connections`: Number of concurrent sessions
+6. `active_connections`: Number of concurrent active flows
 
-### The ML Output:
-- **Classifier**: Predicts whether a path is in `LOW`, `MEDIUM`, or `HIGH` congestion.
-- **Regressor**: Predicts the exact expected delay in milliseconds.
-- **Controller Action**: If Route 1 is marked `HIGH` congestion, the router adds a 200 ms penalty to its ranking, immediately switching traffic to clean Route 2 or Route 3!
+### The Controller Output (`src/ml/controller.py`)
+- **Classifier:** Predicts whether a route's congestion state is `LOW`, `MEDIUM`, or `HIGH`.
+- **Regressor:** Predicts the exact expected latency in milliseconds.
+- **Routing Decision:** If Path 1 is classified as `HIGH` congestion, the router adds an artificial penalty of $+200\text{ ms}$ to Path 1, causing the router to immediately reroute traffic to clean Path 2!
 
 ---
 
-## 5. Our Novel Contribution: Loss-Cause-Aware Routing
+## 7. Our Novel Contribution: Loss-Cause-Aware Routing
 
-### The Problem with Standard ML Routers
-Existing machine learning routers look at packet loss and make a naive assumption:  
-**"A dropped packet ALWAYS means congestion. I must reroute immediately!"**
+### The Critical Flaw in Existing ML Routers
+Most modern AI routers look at packet loss and make a blanket assumption:  
+> *"If a packet is lost, the router must be congested! Reroute immediately!"*
 
-**Why is this terrible?**  
-In real networks (wireless links, old copper cables, optical fiber attenuation), packets often get corrupted due to **random bit-flips (noise)**, NOT queue congestion!
-- The queue is empty!
-- The link is fast!
-- But 1 bit flipped, so CRC-32 failed and TCP dropped the packet.
-
-If a standard ML router sees this loss, it panics and reroutes traffic to a longer alternate path. This causes **Route Flapping** (traffic constantly bouncing back and forth needlessly) and adds unnecessary latency!
+**Why is this wrong?**  
+On wireless networks, optical fibers, or copper cables, packets often fail due to **Layer 2 electrical noise (bit-flips)**, while the router queues are completely empty!  
+When a naive ML router sees this noise loss, it panics and reroutes traffic onto longer alternate routes. This creates **Route Flapping** (traffic constantly bouncing back and forth needlessly) and destabilizes the network.
 
 ### Our Solution: Cross-Layer Inspection
-Instead of looking at loss in isolation, our router checks **evidence from multiple layers**:
-
-```
-Layer 2 (Data Link):  Is CRC-32 failing? (Physical bit-flips on wire)
-Layer 3 (Network):    Is queue occupancy rising? Is queue slope positive? (Buffer building up)
-Layer 4 (Transport):  Is RTT variance/jitter oscillating? Are TCP retransmissions high?
-```
+Our router inspects evidence across multiple layers simultaneously:
+- **Layer 2 (Data Link):** Checks `crc_fail_rate` (physical frame corruption).
+- **Layer 3 (Network):** Checks `queue_occupancy` and `queue_slope` (is the buffer filling up over time?).
+- **Layer 4 (Transport):** Checks `retransmission_rate` and `rtt_variance` (TCP packet retries and jitter).
 
 ```mermaid
 flowchart TD
-    A["Telemetry Ingestion (L2 + L3 + L4)"] --> B{"Hysteresis Active?\n(< 20 pkts on path)"}
-    B -- "Yes" --> C["HOLD_HYSTERESIS\nPrevent route flapping"]
+    A["Telemetry Ingestion (L2 CRC + L3 Queue + L4 TCP)"] --> B{"Hysteresis Lock Active?\n(< 20 pkts on new path)"}
+    B -- "Yes" --> C["HOLD_HYSTERESIS\nKeep current route to stop flapping"]
     B -- "No" --> D["Loss-Cause Classifier (Random Forest)"]
-    D --> E{"Confidence >= 60%?"}
+    D --> E{"Model Confidence >= 60%?"}
     E -- "No" --> F["FALLBACK_DIJKSTRA\nSafe mode on base latency"]
-    E -- "Yes" --> G{"Classified Cause"}
-    G -- "NORMAL" --> H["MAINTAIN_PATH\nKeep optimal route"]
-    G -- "CORRUPTION" --> I["RETRANSMIT_SAME_PATH\nTCP retransmits on SAME path;\nZero needless reroutes!"]
-    G -- "CONGESTION" --> J["REROUTE_CONGESTION\nBypass bottleneck node"]
+    E -- "Yes" --> G{"Diagnosed Cause"}
+    G -- "NORMAL" --> H["MAINTAIN_PATH\nKeep optimal primary route"]
+    G -- "CORRUPTION" --> I["RETRANSMIT_SAME_PATH\nTCP retries on SAME path;\nZero needless reroutes!"]
+    G -- "CONGESTION" --> J["REROUTE_CONGESTION\nDetour around congested router"]
     G -- "MIXED" --> F
 ```
 
-### The 4 Smart Response Policies:
-1. **CORRUPTION Detected** (CRC failures high, queue empty, RTT stable):  
-   $\rightarrow$ **`RETRANSMIT_SAME_PATH`**: Tell TCP to retransmit on the same path. **DO NOT reroute.**
-2. **CONGESTION Detected** (Queue full, queue slope $>0$, RTT high, CRC clean):  
-   $\rightarrow$ **`REROUTE_CONGESTION`**: Shift traffic to bypass the bottleneck router.
-3. **MIXED / LOW CONFIDENCE** (Confidence $< 60\%$ or conflicting signals):  
-   $\rightarrow$ **`FALLBACK_DIJKSTRA`**: Fall back safely to standard Dijkstra on base latency.
-4. **Hysteresis Dampening**:  
-   $\rightarrow$ After switching routes, **hold the new route for at least 20 packets** before allowing another reroute. This stops route flapping completely.
+### The 4 Smart Policy Actions:
+1. **CORRUPTION (Noise on Wire):**  
+   Queue is empty, RTT is normal, but CRC checksums are failing.  
+   $\rightarrow$ **`RETRANSMIT_SAME_PATH`**: TCP retransmits on the same path. **Do NOT reroute!**
+2. **CONGESTION (Buffer Overflow):**  
+   Queue is rising, RTT is inflating, but CRC checksums are clean.  
+   $\rightarrow$ **`REROUTE_CONGESTION`**: Detour traffic around the bottleneck node.
+3. **MIXED / LOW CONFIDENCE (< 60%):**  
+   Conflicting signals or unconfident prediction.  
+   $\rightarrow$ **`FALLBACK_DIJKSTRA`**: Fall back safely to standard shortest path.
+4. **Hysteresis Dampening (20 Packets):**  
+   After switching routes, the router locks the path for at least 20 packets before allowing another switch, completely eliminating route flapping.
 
 ---
 
-## 6. Interactive Dashboard Walkthrough
+## 8. Dashboard Walkthrough (Tabs 1 to 6 Explained Simply)
 
-When you run `streamlit run src/dashboard/app.py`, you will see 6 tabs. Here is what each tab does:
+When you run `streamlit run src/dashboard/app.py`, an interactive control dashboard opens in your browser with 6 tabs:
 
 ### Tab 1: Network Topology & Adaptive Routing
-- **What it shows**: The interactive Figure 5 network graph built with Plotly.
-- **What you can click**:
-  - **"Stress Router R2" toggle**: Saturates R2's queue buffer to 80% and multiplies link delay by 6x.
-  - **"ML vs Static Routing" radio**: Choose whether ML adapts or static Dijkstra stays on R2.
-  - **"Burst Packets" slider**: Fire 5 to 25 packets across the network.
-- **What to observe**: When R2 is stressed, the links turn bright red. The ML model detects `HIGH` congestion and redirects packets through Router R3, saving $\sim 50\text{ ms}$ of latency!
+- **What it shows:** An interactive graph of the 6-node network (S, R1, R2, R3, R4, D).
+- **Interactive Controls:**
+  - **"Stress Router R2" toggle:** Injects 80% queue saturation on Router R2.
+  - **"ML vs Static Routing" radio:** Compare Dijkstra against Random Forest.
+  - **"Burst Packets" slider:** Send 5 to 25 packets across the network.
+- **What to observe:** When R2 is stressed, the link turns red. Static Dijkstra keeps blindly sending packets through R2 (high latency). The ML router detects the congestion and detours traffic through R3 (latency drops back to normal!).
 
 ### Tab 2: 7-Layer OSI Packet Engine
-- **What it shows**: The step-by-step transformation of a message down from L7 to L1, and back up from L1 to L7.
-- **What you can click**:
-  - Type any text message in the box.
-  - Choose **TCP** or **UDP**.
+- **What it shows:** The step-by-step assembly of a message down L7 to L1 and back up L1 to L7.
+- **Interactive Controls:**
+  - Type any text message (e.g., *"Hello Computer Networks"*).
+  - Select protocol: **TCP** or **UDP**.
   - Toggle **"Inject Bit-Flip Error in Frame Payload"**.
-- **What to observe**:
-  - You can inspect the exact JSON headers at every layer: Session Token (L5), TCP Seq/Ack (L4), TTL (L3), MAC & CRC-32 (L2), and raw bitstream (L1).
-  - If you inject a bit-flip, L2 shows `CRC Mismatch Error`! If TCP is selected, it automatically fires Attempt #2 and recovers!
+- **What to observe:**
+  - Inspect the JSON header at every layer: Session ID (L5), TCP Seq/Ack (L4), TTL (L3), MAC & CRC-32 (L2), and raw bitstream (L1).
+  - If you inject a bit-flip, Layer 2 displays `CRC Mismatch Error`! With TCP, it automatically triggers Attempt #2 and successfully recovers!
 
 ### Tab 3: Operations Telemetry & Diagnostics
-- **What it shows**: Real-time network health KPIs.
-- **Key charts**:
-  - Live latency line chart over time.
-  - Retransmission bar chart per packet.
-  - Packet delivery success vs drop pie chart.
-  - Detailed telemetry inspection log table.
+- **What it shows:** Real-time network health metrics and charts.
+- **Visuals:**
+  - Latency time-series line chart.
+  - Retransmission frequency bar chart.
+  - Packet delivery ratio donut chart (Delivered vs Dropped).
+  - Raw telemetry data table for all links.
 
 ### Tab 4: Machine Learning Decision Matrix
-- **What it shows**: The brain of our Random Forest model.
-- **Key charts**:
-  - **Feature Importances**: Shows which network signals matter most to the ML model (Queue occupancy and packet rate have the highest weights).
-  - **Classification Accuracy**: Displays the 85%+ accuracy score and mean squared error (MSE) on test data.
-  - **Route Evaluation Radar Chart**: Compares Route 1 vs Route 2 vs Route 3 across delay, congestion penalty, and bandwidth.
+- **What it shows:** The inner workings and accuracy of the Random Forest model.
+- **Visuals:**
+  - **Feature Importance Chart:** Proves that queue occupancy and packet arrival rate carry the highest predictive weight.
+  - **Route Evaluation Radar Chart:** Compares Route 1 vs Route 2 vs Route 3 across delay, congestion penalty, and bandwidth.
+  - Model classification accuracy score (**>85%**).
 
 ### Tab 5: Host Socket Interoperability
-- **What it shows**: Proof that our simulation connects to real-world operating system networking.
-- **What you can click**:
-  - Toggle TCP vs UDP protocol.
-  - Click **"Transmit Over Local Socket"**.
-- **What happens behind the scenes**:
-  - A real background multi-threaded socket server spins up on `127.0.0.1:9091` (TCP) and `9092` (UDP).
-  - The Python socket client sends real bytes over your operating system loopback interface, measures live Round-Trip Time (RTT in milliseconds), and receives an acknowledgment.
+- **What it shows:** Proof that our simulated network interacts with real operating system sockets.
+- **How it works:**
+  - Spins up a background Python socket server on `127.0.0.1:9091` (TCP) and `9092` (UDP).
+  - Sends real operating system socket frames, measures real loopback Round-Trip Time (RTT in ms), and receives echo replies.
 
 ### Tab 6: Loss-Cause Analysis (Novel Research Tab)
-- **What it shows**: Interactive demonstration of our novel cross-layer routing contribution.
-- **What you can click**:
-  - **"Inject L2 Link Corruption" toggle**: Injects bit errors on link R1<->R2 without touching queues.
-  - **"Inject L3 Queue Congestion" toggle**: Stresses R2 queue.
-  - **Confidence Threshold & Hysteresis sliders**.
-- **What to observe**:
-  - **Classification Badge**: Instantly changes between `NORMAL`, `CORRUPTION`, `CONGESTION`, and `MIXED`.
-  - **Policy Action Card**: Displays whether the router decided to `RETRANSMIT_SAME_PATH` or `REROUTE_CONGESTION` and why.
-  - **Benchmark Comparison Bar Chart**: Directly compares all 4 router types across real measured test scenarios.
+- **What it shows:** The live demonstration of our novel cross-layer routing research.
+- **Interactive Controls:**
+  - **"Inject L2 Link Corruption" toggle:** Simulates wire noise (BER = 0.20) without touching queues.
+  - **"Inject L3 Queue Congestion" toggle:** Stresses router queues.
+  - **Confidence Threshold & Hysteresis sliders.**
+- **What to observe:**
+  - **Live Cause Badge:** Shows `NORMAL`, `CORRUPTION`, `CONGESTION`, or `MIXED`.
+  - **Policy Action Card:** Shows why the router chose `RETRANSMIT_SAME_PATH` or `REROUTE_CONGESTION`.
+  - **Benchmark Comparison Bar Chart:** Directly compares Static Dijkstra vs Adaptive ML vs Loss-Aware Router.
 
 ---
 
-## 7. The 4 Routing Strategies Compared
+## 9. Empirical Benchmark Results (Real Measured Numbers)
 
-We ran 100 packets across 5 scenarios using `run_experiments.py`. Here are the real measured results:
+We ran 100 packets across 5 stress scenarios using `run_experiments.py`. Here are the real measured results:
 
-| Scenario | Static Dijkstra | Adaptive ML (Baseline) | Loss-Aware (Ours) | Ablation (No L2/L4) |
-|:---|:---:|:---:|:---:|:---:|
-| **Clean Network** | 0 needless reroutes | **6 needless reroutes** (flapping!) | **0 needless reroutes** | 0 needless reroutes |
-| **Corruption-Only** (BER=0.20) | 0 needless reroutes | **4 needless reroutes** (fled Route 1) | **0 needless reroutes** (stayed on path) | 0 needless reroutes |
-| **Congestion on R2** | 82 ms delay, 54 retrans | 27 ms delay, 5 needless reroutes | **57 ms delay, 23 retrans** | 27 ms delay |
-| **Congestion on R1** | 102 ms delay, 44 retrans | 27 ms delay, 0 needless reroutes | **86 ms delay, 38 retrans** | 27 ms delay |
-| **Both at Once** | 82 ms delay, 54 retrans | 27 ms delay, 1 needless reroute | **57 ms delay, 23 retrans** | 27 ms delay |
+| Test Scenario | Metric | Static Dijkstra | Adaptive ML (Baseline) | Loss-Aware Router (Ours) | Ablation (No L2/L4) |
+|:---|:---|:---:|:---:|:---:|:---:|
+| **Clean Network** | Needless Reroutes | **0** | **6 (Flapping!)** | **0** | 0 |
+| | Mean Latency | 24.0 ms | 24.0 ms | 24.0 ms | 24.0 ms |
+| **Corruption-Only** (BER=0.20) | Needless Reroutes | **0** | **4 (Fled Route 1)** | **0 (Stayed on Path)** | 0 |
+| | Delivery Ratio | 100% | 100% | 100% | 100% |
+| **Congestion on R2** | Mean Latency | 82.1 ms | 27.2 ms | **57.1 ms** | 27.2 ms |
+| | Retransmissions | 54 | 0 | **23 (-57.4%)** | 0 |
+| **Congestion on R1** | Mean Latency | 102.1 ms | 27.2 ms | **86.1 ms** | 27.2 ms |
+| **Both at Once** | Retransmissions | 54 | 0 | **23 (-57.4%)** | 0 |
 
-### Key Takeaway to Tell the Examiner:
-1. In clean networks and corruption-only networks, the existing Adaptive ML Router **flaps 4 to 6 times needlessly** because it confuses jitter and bit errors with congestion.
-2. Our **Loss-Aware Router achieves ZERO needless reroutes**, saving bandwidth and maintaining path stability.
-3. In congestion, our router cuts retransmissions by **57.4%** (from 54 down to 23).
-4. **Honest Engineering Trade-off**: The baseline router reroutes instantly on packet 1, whereas our router uses a 20-packet hysteresis window to ensure stability. This causes slightly higher latency during the initial transition, but guarantees that the network will never suffer from route flapping.
+### Key Talking Points for Presentation:
+1. **Zero Needless Reroutes:** In clean and corruption-only scenarios, the baseline ML router suffered from 4 to 6 needless reroutes. Our router had **0 needless reroutes**, eliminating route flapping completely.
+2. **57.4% Reduction in Retransmissions:** Under severe congestion, our router cut packet retransmissions from 54 down to 23.
+3. **Honest Engineering Trade-Off:** The baseline router switches routes instantly on packet 1. Our router enforces a 20-packet hysteresis window to verify that congestion is real and persistent. This creates a slightly higher transition latency, but protects the network against catastrophic route oscillation.
 
 ---
 
-## 8. How to Run the Code
+## 10. How to Run and Demonstrate the Code
 
-### 1. Run all 22 Automated Tests:
+### 1. Run the Full Test Suite:
 ```bash
 python -m pytest -v
 ```
-*(All 22 tests must pass in ~7 seconds).*
+*(Confirms that all 22 unit and end-to-end tests pass).*
 
-### 2. Run the End-to-End CLI Demo (4 Stages):
+### 2. Run the 4-Stage Console Demo:
 ```bash
 python run_demo.py
 ```
-*(Runs OSI encapsulation, CRC recovery, ML adaptive rerouting, and socket echo).*
+*(Executes OSI encapsulation, CRC recovery, ML adaptive rerouting, and socket echo in your terminal).*
 
-### 3. Run the Empirical Benchmark Experiments:
+### 3. Run the Empirical Research Benchmarks:
 ```bash
 python run_experiments.py
 ```
-*(Runs 5 scenarios $\times$ 4 routers = 2,000 packets and saves `results/experiment_results.csv` and Plotly HTML figures).*
+*(Runs 2,000 packets across all scenarios, generates `results/experiment_results.csv`, and saves Plotly figures).*
 
-### 4. Launch the Streamlit Web Dashboard:
+### 4. Launch the Streamlit Interactive Dashboard:
 ```bash
 streamlit run src/dashboard/app.py
 ```
-*(Opens the operations dashboard at http://localhost:8501).*
+*(Opens the interactive web UI at http://localhost:8501).*
 
 ---
 
-## 9. Viva & Lab Presentation Cheat Sheet
+## 11. Viva & Oral Exam Defense Cheat Sheet (Q&A)
 
 ### Q1: What is the difference between TCP and UDP in your implementation?
 > **Answer:** *"TCP is connection-oriented and reliable: in `l4_transport.py`, it attaches sequence and ACK numbers, and if a packet drops or fails CRC-32 verification, TCP retransmits up to 3 times. UDP is connectionless: it attaches only port numbers and payload length, sends datagrams without ACKs, and does not retransmit dropped packets."*
@@ -303,4 +366,4 @@ streamlit run src/dashboard/app.py
 
 ---
 
-*Good luck with the viva and lab presentation! Review this document, click through the 6 tabs in the dashboard, and you will be completely prepared.*
+*End of Study Guide. Review this document and click through the 6 dashboard tabs to ace your presentation and viva!*
