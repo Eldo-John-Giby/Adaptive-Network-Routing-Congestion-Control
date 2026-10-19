@@ -104,6 +104,10 @@ class NetworkSimulator:
                     hop_results.append(HopResult(u, v, False, link_delay, queue_pct, f"Link loss on {u}->{v}"))
                     break
 
+                # Check if link causes L2 bit corruption (independent of queue stress)
+                if link.should_corrupt():
+                    self._corrupt_signal_l2(signal)
+
                 hop_results.append(HopResult(u, v, True, link_delay, queue_pct))
 
             # 3. Decapsulate at Destination
@@ -128,6 +132,10 @@ class NetworkSimulator:
                     self.total_drops += 1
                     if transport_type == TransportType.TCP and attempt <= max_retransmissions:
                         retrans_count += 1
+                        for hop_idx in range(len(path) - 1):
+                            plink = self.topology.get_link(path[hop_idx], path[hop_idx+1])
+                            if plink:
+                                plink.retransmissions += 1
                         # Backoff wait
                         total_delay += 10.0
                         continue
@@ -148,6 +156,10 @@ class NetworkSimulator:
                 # Link dropped or queue buffer dropped
                 if transport_type == TransportType.TCP and attempt <= max_retransmissions:
                     retrans_count += 1
+                    for hop_idx in range(len(path) - 1):
+                        plink = self.topology.get_link(path[hop_idx], path[hop_idx+1])
+                        if plink:
+                            plink.retransmissions += 1
                     total_delay += 15.0
                     continue
                 else:
@@ -175,6 +187,97 @@ class NetworkSimulator:
             details="Transmission failed after maximum retries."
         )
 
+    def _corrupt_signal_l2(self, signal):
+        """Injects bit corruption into the L2 serialized frame within a PhysicalSignal."""
+        try:
+            import json
+            raw_str = self.src_stack.l1.bits_to_string(signal.raw_bits)
+            l2_dict = json.loads(raw_str)
+            l2_dict["is_corrupted"] = True
+            if l2_dict.get("payload"):
+                orig = l2_dict["payload"]
+                corrupted_char = chr(ord(orig[0]) ^ 0x01)
+                l2_dict["payload"] = corrupted_char + orig[1:]
+            signal.raw_bits = self.src_stack.l1.string_to_bits(json.dumps(l2_dict))
+        except Exception:
+            pass
+
+    def get_link_telemetry(self, u: str, v: str) -> dict:
+        """Returns comprehensive 10-feature telemetry for an individual link."""
+        link = self.topology.get_link(u, v)
+        if not link:
+            return {}
+        node_v = self.topology.nodes.get(v)
+        q_occ = (node_v.queue_occupancy_ratio * 100.0) if isinstance(node_v, RouterNode) else 0.0
+        q_slope = node_v.get_queue_slope() if isinstance(node_v, RouterNode) else 0.0
+        rtt_estimate = link.calculate_link_delay() * 2.0
+        packet_rate = 150.0 + (q_occ * 20.0)
+
+        return {
+            "link_id": f"{u}->{v}",
+            "bandwidth_mbps": link.bandwidth_mbps,
+            "packet_rate_pps": packet_rate,
+            "queue_occupancy_pct": q_occ,
+            "rtt_ms": rtt_estimate,
+            "loss_rate_pct": link.packet_loss_rate * 100.0,
+            "active_connections": link.active_connections,
+            "crc_fail_rate": link.crc_fail_rate,
+            "retransmission_rate": link.retransmission_rate,
+            "rtt_variance": link.rtt_variance,
+            "queue_slope": q_slope
+        }
+
+    def get_path_telemetry(self, path: List[str]) -> dict:
+        """Aggregates cross-layer telemetry features across all links and nodes on a path."""
+        total_delay = 0.0
+        max_queue_occ = 0.0
+        max_loss = 0.0
+        max_conn = 1
+        min_bw = 1000.0
+        bottleneck_node = None
+        max_crc_fail_rate = 0.0
+        max_retrans_rate = 0.0
+        sum_rtt_variance = 0.0
+        max_queue_slope = 0.0
+
+        for i in range(len(path) - 1):
+            u, v = path[i], path[i+1]
+            link = self.topology.get_link(u, v)
+            if link:
+                total_delay += link.calculate_link_delay()
+                max_loss = max(max_loss, link.packet_loss_rate * 100.0)
+                max_conn = max(max_conn, link.active_connections)
+                min_bw = min(min_bw, link.bandwidth_mbps)
+                max_crc_fail_rate = max(max_crc_fail_rate, link.crc_fail_rate)
+                max_retrans_rate = max(max_retrans_rate, link.retransmission_rate)
+                sum_rtt_variance += link.rtt_variance
+
+            node_v = self.topology.nodes.get(v)
+            if isinstance(node_v, RouterNode):
+                q_occ = node_v.queue_occupancy_ratio * 100.0
+                if q_occ > max_queue_occ:
+                    max_queue_occ = q_occ
+                    bottleneck_node = v
+                total_delay += node_v.queue_length * 2.0
+                max_queue_slope = max(max_queue_slope, node_v.get_queue_slope())
+
+        packet_rate = 150.0 + (max_queue_occ * 20.0)
+
+        return {
+            "bandwidth_mbps": min_bw,
+            "packet_rate_pps": packet_rate,
+            "queue_occupancy_pct": max_queue_occ,
+            "rtt_ms": total_delay * 2.0,
+            "loss_rate_pct": max_loss,
+            "active_connections": max_conn,
+            "crc_fail_rate": max_crc_fail_rate,
+            "retransmission_rate": max_retrans_rate,
+            "rtt_variance": round(sum_rtt_variance, 4),
+            "queue_slope": max_queue_slope,
+            "bottleneck_node": bottleneck_node,
+            "accumulated_delay_ms": total_delay
+        }
+
     def _record_telemetry(self, res: SimulationResult):
         record = {
             "timestamp": time.time(),
@@ -185,3 +288,4 @@ class NetworkSimulator:
             "r2_queue_pct": self.topology.nodes["R2"].queue_occupancy_ratio * 100 if isinstance(self.topology.nodes["R2"], RouterNode) else 0.0
         }
         self.telemetry_history.append(record)
+

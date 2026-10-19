@@ -4,6 +4,7 @@ Models communication channels between routers/endpoints with bandwidth, base del
 congestion stress injection, and packet loss.
 """
 from dataclasses import dataclass, field
+from collections import deque
 import random
 import time
 
@@ -20,10 +21,42 @@ class NetworkLink:
     stress_active: bool = False
     packets_transmitted: int = 0
     packets_dropped: int = 0
+    # Corruption injection parameters
+    bit_error_rate: float = 0.0      # independent of queue stress
+    crc_errors: int = 0
+    retransmissions: int = 0
+    recent_delays: deque = field(default_factory=lambda: deque(maxlen=20))
 
     @property
     def link_id(self) -> str:
         return f"{self.u}<->{self.v}"
+
+    def inject_corruption(self, bit_error_rate: float):
+        """Injects bit error rate corruption on this link, independent of queue stress."""
+        self.bit_error_rate = max(0.0, float(bit_error_rate))
+
+    def should_corrupt(self) -> bool:
+        """Determines if a packet across this link suffers bit corruption."""
+        if self.bit_error_rate > 0.0 and random.random() < self.bit_error_rate:
+            self.crc_errors += 1
+            return True
+        return False
+
+    @property
+    def crc_fail_rate(self) -> float:
+        return round(self.crc_errors / max(1, self.packets_transmitted), 4)
+
+    @property
+    def retransmission_rate(self) -> float:
+        return round(self.retransmissions / max(1, self.packets_transmitted), 4)
+
+    @property
+    def rtt_variance(self) -> float:
+        if len(self.recent_delays) >= 2:
+            vals = list(self.recent_delays)
+            mean = sum(vals) / len(vals)
+            return round(sum((x - mean) ** 2 for x in vals) / len(vals), 4)
+        return 0.0
 
     def set_stress(self, active: bool, stress_multiplier: float = 4.0, additional_loss: float = 0.15):
         """Injects or clears congestion on this link."""
@@ -53,13 +86,14 @@ class NetworkLink:
         Returns (success, delay_ms).
         """
         self.packets_transmitted += 1
-        # Check packet loss
+        delay = self.calculate_link_delay(packet_size_bytes)
+        self.recent_delays.append(delay)
+
+        # Check packet loss due to congestion/buffer loss
         if random.random() < self.packet_loss_rate:
             self.packets_dropped += 1
-            delay = self.calculate_link_delay(packet_size_bytes)
             return False, delay
 
-        delay = self.calculate_link_delay(packet_size_bytes)
         return True, delay
 
     def get_metrics(self) -> dict:
@@ -69,7 +103,17 @@ class NetworkLink:
             "stress_active": self.stress_active,
             "stress_factor": self.stress_factor,
             "loss_rate": round(self.packet_loss_rate, 3),
+            "bit_error_rate": round(self.bit_error_rate, 3),
+            "crc_errors": self.crc_errors,
+            "crc_fail_rate": self.crc_fail_rate,
+            "retransmission_rate": self.retransmission_rate,
+            "rtt_variance": self.rtt_variance,
             "transmitted": self.packets_transmitted,
             "dropped": self.packets_dropped,
             "active_connections": self.active_connections
         }
+
+def inject_corruption(link: NetworkLink, bit_error_rate: float):
+    """Injects bit error rate corruption on a network link."""
+    link.inject_corruption(bit_error_rate)
+

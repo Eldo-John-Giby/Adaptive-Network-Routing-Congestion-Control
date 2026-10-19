@@ -141,3 +141,37 @@ class NetworkTopology:
         for l in [l12, l21, l24, l42]:
             if l:
                 l.set_stress(stress_active, stress_multiplier=6.0, additional_loss=0.20)
+
+    def stress_router_r1(self, stress_active: bool = True):
+        """
+        Simulates congestion on Router R1:
+        Queue fills, delay rises on connected links (S->R1, R1->R2, R1->R3).
+        Forces traffic to consider the direct bypass route S->R3->R4->D.
+        """
+        r1 = self.nodes.get("R1")
+        if isinstance(r1, RouterNode):
+            if stress_active:
+                r1.queue.clear()
+                for i in range(40):
+                    r1.queue.append(f"STRESS_PKT_{i}")
+            else:
+                r1.queue.clear()
+
+        links = [
+            self.get_link("S", "R1"), self.get_link("R1", "S"),
+            self.get_link("R1", "R2"), self.get_link("R2", "R1"),
+            self.get_link("R1", "R3"), self.get_link("R3", "R1")
+        ]
+        for l in links:
+            if l:
+                l.set_stress(stress_active, stress_multiplier=6.0, additional_loss=0.20)
+
+    def inject_link_corruption(self, u: str, v: str, bit_error_rate: float):
+        """Injects bit error rate corruption bidirectionally between u and v."""
+        l_uv = self.get_link(u, v)
+        l_vu = self.get_link(v, u)
+        if l_uv:
+            l_uv.inject_corruption(bit_error_rate)
+        if l_vu:
+            l_vu.inject_corruption(bit_error_rate)
+

@@ -26,6 +26,7 @@ class RouterNode(Node):
         super().__init__(node_id=node_id, ip_address=ip_address, mac_address=mac_address, is_router=True)
         self.max_queue_size = max_queue_size
         self.queue: deque = deque()
+        self.queue_history: deque = deque(maxlen=20)
         self.packets_forwarded: int = 0
         self.packets_dropped: int = 0
         # Distance-vector routing table: destination_node_id -> {"next_hop": str, "cost": float}
@@ -39,12 +40,23 @@ class RouterNode(Node):
     def queue_occupancy_ratio(self) -> float:
         return len(self.queue) / self.max_queue_size if self.max_queue_size > 0 else 0.0
 
+    def get_queue_slope(self, k: int = 5) -> float:
+        """Calculates queue occupancy change rate (%/step) over the last k steps."""
+        if len(self.queue_history) < 2:
+            return 0.0
+        history = list(self.queue_history)
+        window = min(k, len(history) - 1)
+        delta = history[-1] - history[-(window + 1)]
+        return round(delta / max(1, window), 4)
+
     def enqueue_packet(self, packet: Any) -> bool:
         """Attempts to buffer packet. Drops packet if queue exceeds max capacity."""
         if len(self.queue) >= self.max_queue_size:
             self.packets_dropped += 1
+            self.queue_history.append(self.queue_occupancy_ratio * 100.0)
             return False
         self.queue.append(packet)
+        self.queue_history.append(self.queue_occupancy_ratio * 100.0)
         return True
 
     def process_and_forward(self) -> Optional[Any]:
@@ -52,6 +64,7 @@ class RouterNode(Node):
             return None
         packet = self.queue.popleft()
         self.packets_forwarded += 1
+        self.queue_history.append(self.queue_occupancy_ratio * 100.0)
         return packet
 
     def update_distance_vector(self, dest: str, next_hop: str, cost: float):
@@ -67,6 +80,7 @@ class RouterNode(Node):
             "queue_len": len(self.queue),
             "max_queue": self.max_queue_size,
             "occupancy_pct": round(self.queue_occupancy_ratio * 100, 1),
+            "queue_slope": self.get_queue_slope(),
             "forwarded": self.packets_forwarded,
             "dropped": self.packets_dropped
         }
