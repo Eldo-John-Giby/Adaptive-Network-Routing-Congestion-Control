@@ -566,7 +566,7 @@ def build_topology_figure(topology: NetworkTopology, active_path=None, stress_r2
 with tabs[0]:
     st.markdown("""
     <div class='callout-info'>
-        <strong>Closed-Loop Adaptive Routing Demonstration (Assessments 6 & 7):</strong><br>
+        <strong>Closed-Loop Adaptive Routing Demonstration:</strong><br>
         When Router R2 experiences severe congestion (queue buffer &ge; 80%, link delay &times;6, packet loss &ge; 20%),
         the Machine Learning model detects high bottleneck latency on Route 1 and adapts routing to Route 2 or Route 3 in real time.
     </div>
@@ -794,7 +794,7 @@ with tabs[0]:
 with tabs[1]:
     st.markdown("""
     <div class='callout-info'>
-        <strong>Unified 7-Layer Protocol Journey (Assessments 2, 3, & 5):</strong><br>
+        <strong>Unified 7-Layer Protocol Journey:</strong><br>
         Inspect full bit-level transformations from <strong>Layer 7 (Application)</strong> down to <strong>Layer 1 (Physical)</strong>.
         Test CRC-32 checksum generation, inject bit-flip corruption on Layer 2, and observe decapsulation validation at destination.
     </div>
@@ -1160,7 +1160,7 @@ with tabs[2]:
 with tabs[3]:
     st.markdown("""
     <div class='callout-info'>
-        <strong>Machine Learning Intelligence Diagnostics (Assessment 7):</strong><br>
+        <strong>Machine Learning Intelligence Diagnostics:</strong><br>
         Inspect Random Forest feature importance weights, model regression accuracy, and real-time inference confidence scores.
     </div>
     """, unsafe_allow_html=True)
@@ -1279,7 +1279,7 @@ with tabs[3]:
 with tabs[4]:
     st.markdown("""
     <div class='callout-info'>
-        <strong>Assessment 4: Host Socket API Interoperability:</strong><br>
+        <strong>Host Socket API Interoperability:</strong><br>
         Directly test operating system level Python TCP and UDP endpoints over localhost (ports 9091 and 9092) with round-trip measurement.
     </div>
     """, unsafe_allow_html=True)
@@ -1289,7 +1289,7 @@ with tabs[4]:
     with col_sock_left:
         st.markdown("<div class='glass-panel'><h3>Client Transmission Config</h3>", unsafe_allow_html=True)
         sock_proto = st.selectbox("Transport Socket Protocol", ["TCP (Connection-Oriented, Port 9091)", "UDP (Datagram, Port 9092)"])
-        sock_msg = st.text_input("Socket Payload", value="ECHO_TEST: Verification of Computer Networks Assessment 4 Host API")
+        sock_msg = st.text_input("Socket Payload", value="ECHO_TEST: Verification of Computer Networks Host API")
         send_socket_btn = st.button("Transmit Over Local Socket", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
