@@ -1418,6 +1418,23 @@ with tabs[5]:
             st.session_state.loss_router.hysteresis_packets = hysteresis_n
 
         run_diag_btn = st.button("Probe Network & Classify Loss Cause", use_container_width=True)
+        if run_diag_btn:
+            probe_results = []
+            for p_idx in range(10):
+                res = st.session_state.simulator.transmit_message(
+                    message=f"DIAG_PROBE_{p_idx+1}",
+                    path=st.session_state.loss_router.current_path,
+                    transport_type=TransportType.TCP
+                )
+                probe_results.append(res)
+            deliv = sum(1 for r in probe_results if r.delivered)
+            retx = sum(r.retransmissions for r in probe_results)
+            st.markdown(f"""
+            <div class='callout-info' style='background:rgba(6,78,59,0.4);border-color:#10B981;color:#A7F3D0;margin-top:0.6rem;'>
+                <strong>DIAGNOSTIC PROBE COMPLETED:</strong> Transmitted 10 test frames across path.<br>
+                Delivered: <strong>{deliv}/10</strong> | Retransmissions: <strong>{retx}</strong>
+            </div>
+            """, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col_diag:

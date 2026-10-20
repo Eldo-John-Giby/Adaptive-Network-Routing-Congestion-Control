@@ -125,12 +125,17 @@ class NetworkTopology:
         r2 = self.nodes.get("R2")
         if isinstance(r2, RouterNode):
             if stress_active:
-                # fill queue to 80% capacity
+                # fill queue to 80% capacity and record rising history for queue slope
                 r2.queue.clear()
+                r2.queue_history.clear()
+                for h in [10.0, 25.0, 45.0, 65.0, 80.0]:
+                    r2.queue_history.append(h)
                 for i in range(40):
                     r2.queue.append(f"STRESS_PKT_{i}")
             else:
                 r2.queue.clear()
+                r2.queue_history.clear()
+                r2.queue_history.append(0.0)
 
         # Stress the links connected to R2
         l12 = self.get_link("R1", "R2")
@@ -141,6 +146,10 @@ class NetworkTopology:
         for l in [l12, l21, l24, l42]:
             if l:
                 l.set_stress(stress_active, stress_multiplier=6.0, additional_loss=0.20)
+                if stress_active:
+                    l.recent_delays.extend([15.0, 45.0, 25.0, 60.0])
+                else:
+                    l.recent_delays.clear()
 
     def stress_router_r1(self, stress_active: bool = True):
         """
@@ -152,10 +161,15 @@ class NetworkTopology:
         if isinstance(r1, RouterNode):
             if stress_active:
                 r1.queue.clear()
+                r1.queue_history.clear()
+                for h in [10.0, 25.0, 45.0, 65.0, 80.0]:
+                    r1.queue_history.append(h)
                 for i in range(40):
                     r1.queue.append(f"STRESS_PKT_{i}")
             else:
                 r1.queue.clear()
+                r1.queue_history.clear()
+                r1.queue_history.append(0.0)
 
         links = [
             self.get_link("S", "R1"), self.get_link("R1", "S"),
@@ -165,6 +179,10 @@ class NetworkTopology:
         for l in links:
             if l:
                 l.set_stress(stress_active, stress_multiplier=6.0, additional_loss=0.20)
+                if stress_active:
+                    l.recent_delays.extend([15.0, 45.0, 25.0, 60.0])
+                else:
+                    l.recent_delays.clear()
 
     def inject_link_corruption(self, u: str, v: str, bit_error_rate: float):
         """Injects bit error rate corruption bidirectionally between u and v."""

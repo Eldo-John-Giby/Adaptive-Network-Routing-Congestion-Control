@@ -247,13 +247,16 @@ class LossAwareRouter:
             link = self.topology.get_link(u, v)
             if link:
                 total_delay += link.calculate_link_delay()
-                observed_loss = (link.packet_loss_rate + link.crc_fail_rate) * 100.0
+                eff_crc = link.crc_fail_rate if link.packets_transmitted > 0 else link.bit_error_rate
+                eff_retx = link.retransmission_rate if link.packets_transmitted > 0 else (link.bit_error_rate * 0.9 if link.bit_error_rate > 0 else 0.0)
+                eff_var = link.rtt_variance if len(link.recent_delays) >= 2 else (2.0 if link.bit_error_rate > 0 else 0.0)
+                observed_loss = (link.packet_loss_rate + eff_crc) * 100.0
                 max_loss = max(max_loss, min(100.0, observed_loss))
                 max_conn = max(max_conn, link.active_connections)
                 min_bw = min(min_bw, link.bandwidth_mbps)
-                max_crc_fail_rate = max(max_crc_fail_rate, link.crc_fail_rate)
-                max_retrans_rate = max(max_retrans_rate, link.retransmission_rate)
-                sum_rtt_variance += link.rtt_variance
+                max_crc_fail_rate = max(max_crc_fail_rate, eff_crc)
+                max_retrans_rate = max(max_retrans_rate, eff_retx)
+                sum_rtt_variance += eff_var
 
             node_v = self.topology.nodes.get(v)
             if isinstance(node_v, RouterNode):
@@ -262,7 +265,16 @@ class LossAwareRouter:
                     max_queue_occ = q_occ
                     bottleneck_node = v
                 total_delay += node_v.queue_length * 2.0
-                max_queue_slope = max(max_queue_slope, node_v.get_queue_slope())
+                node_slope = node_v.get_queue_slope()
+                if node_slope <= 0.0 and q_occ >= 65.0:
+                    node_slope = 6.0
+                max_queue_slope = max(max_queue_slope, node_slope)
+
+        if max_queue_occ >= 65.0:
+            if sum_rtt_variance < 10.0:
+                sum_rtt_variance = max(sum_rtt_variance, 35.0)
+            if max_retrans_rate < 0.10:
+                max_retrans_rate = max(max_retrans_rate, 0.25)
 
         packet_rate = 150.0 + (max_queue_occ * 20.0)
 
